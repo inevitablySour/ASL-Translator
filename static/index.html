@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL Translator</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ASL Translator</h1>
+            <p>Real-time American Sign Language Recognition</p>
+        </header>
+
+        <main>
+            <div class="video-section">
+                <div class="video-container">
+                    <video id="webcam" autoplay playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <button id="startBtn" class="btn btn-primary">Start Camera</button>
+                    <button id="stopBtn" class="btn btn-secondary" disabled>Stop Camera</button>
+                    <button id="toggleLiveBtn" class="btn btn-success" disabled>Start Live Detection</button>
+                </div>
+
+                <div class="language-selector">
+                    <label for="language">Translation Language:</label>
+                    <select id="language">
+                        <option value="english">English</option>
+                        <option value="dutch">Dutch</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <h2>Results</h2>
+                <div id="results" class="results-box">
+                    <p class="placeholder">Results will appear here...</p>
+                </div>
+
+                <div id="prediction" class="prediction-details" style="display: none;">
+                    <div class="detail-row">
+                        <span class="label">Gesture:</span>
+                        <span id="gesture" class="value">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Translation:</span>
+                        <span id="translation" class="value">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Confidence:</span>
+                        <span id="confidence" class="value">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Processing Time:</span>
+                        <span id="processingTime" class="value">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>How to Use</h3>
+                <ol>
+                    <li>Click "Start Camera" to enable your webcam</li>
+                    <li>Click "Start Live Detection" to begin continuous recognition</li>
+                    <li>Position your hand in front of the camera</li>
+                    <li>Form ASL letter gestures</li>
+                    <li>View real-time translations in your selected language</li>
+                    <li>Click "Stop Live Detection" to pause</li>
+                </ol>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by MediaPipe, FastAPI, and MLflow</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
