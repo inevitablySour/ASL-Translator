@@ -7,7 +7,8 @@ from typing import Optional
 
 class Settings(BaseSettings):
     """Application settings with environment variable support"""
-    
+    model_confidence_threshold: float = 0.6
+
     # Application
     app_name: str = "ASL Translator"
     app_version: str = "1.0.0"
