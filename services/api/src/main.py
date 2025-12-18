@@ -13,6 +13,6 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 @app.get("/")
 def home():
     return FileResponse(BASE_DIR / "static" / "index.html")
-
-## First ddocker build
+    
+#First ddocker build
 # Docker run
