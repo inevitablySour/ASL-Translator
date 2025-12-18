@@ -1,6 +1,16 @@
 version: '3.8'
 
 services:
+  api:
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./
+
+
+
+
   asl-translator:
     build: .
     container_name: asl-translator
