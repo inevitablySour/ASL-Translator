@@ -1,0 +1,33 @@
+services:
+  api:
+    build: 
+      context: ./services/api
+    ports:
+      - "8000:8000"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      MODEL_QUEUE: inference_queue
+      API_QUEUE: api_queue
+      DATA_QUEUE: data_queue
+    depends_on:
+      - rabbitmq
+  inference:
+    build: 
+      context: ./services/inference
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      MODEL_QUEUE: inference_queue
+      API_QUEUE: api_queue
+    depends_on:
+      - rabbitmq
+  rabbitmq: 
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+
