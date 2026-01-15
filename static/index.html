@@ -26,6 +26,15 @@
                     <button id="toggleLiveBtn" class="btn btn-success" disabled>Start Live Detection</button>
                 </div>
 
+                <div class="mode-selector">
+                    <label for="detectionMode">Detection Mode:</label>
+                    <select id="detectionMode">
+                        <option value="static">Static (Single Frame)</option>
+                        <option value="temporal">Temporal (Motion-based)</option>
+                    </select>
+                    <span class="mode-info" id="modeInfo">Best for static letters like A, B, C</span>
+                </div>
+
                 <div class="language-selector">
                     <label for="language">Translation Language:</label>
                     <select id="language">
@@ -55,22 +64,46 @@
                         <span id="confidence" class="value">-</span>
                     </div>
                     <div class="detail-row">
+                        <span class="label">Type:</span>
+                        <span id="gestureType" class="value">-</span>
+                    </div>
+                    <div class="detail-row">
                         <span class="label">Processing Time:</span>
                         <span id="processingTime" class="value">-</span>
                     </div>
+                </div>
+
+                <div class="gesture-history">
+                    <h3>Gesture History</h3>
+                    <div id="gestureHistory" class="history-box">
+                        <p class="placeholder">Start detection to build gesture history...</p>
+                    </div>
+                    <button id="clearHistory" class="btn btn-secondary" style="margin-top: 10px;">Clear History</button>
                 </div>
             </div>
 
             <div class="info-section">
                 <h3>How to Use</h3>
-                <ol>
-                    <li>Click "Start Camera" to enable your webcam</li>
-                    <li>Click "Start Live Detection" to begin continuous recognition</li>
-                    <li>Position your hand in front of the camera</li>
-                    <li>Form ASL letter gestures</li>
-                    <li>View real-time translations in your selected language</li>
-                    <li>Click "Stop Live Detection" to pause</li>
-                </ol>
+                <div class="mode-instructions">
+                    <h4>Static Mode (Single Frame)</h4>
+                    <ol>
+                        <li>Select "Static" detection mode</li>
+                        <li>Click "Start Camera" to enable your webcam</li>
+                        <li>Click "Start Live Detection" for continuous recognition</li>
+                        <li>Form ASL letters (A, B, C, etc.)</li>
+                        <li>Best for: Static hand poses</li>
+                    </ol>
+                </div>
+                <div class="mode-instructions">
+                    <h4>Temporal Mode (Motion-based)</h4>
+                    <ol>
+                        <li>Select "Temporal" detection mode</li>
+                        <li>Start camera and live detection</li>
+                        <li>Perform dynamic gestures with movement</li>
+                        <li>System analyzes motion over time (~1 second)</li>
+                        <li>Best for: Dynamic signs like J, Z</li>
+                    </ol>
+                </div>
             </div>
         </main>
 

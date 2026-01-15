@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     # Language
     default_language: str = "english"  # or "dutch"
     
+    # Temporal Gesture Detection
+    temporal_window_size: int = 30  # Number of frames in sliding window (~1 sec at 30 FPS)
+    temporal_stride: int = 5  # Frames to skip between predictions
+    min_gesture_duration: int = 10  # Minimum frames for valid gesture
+    gesture_cooldown: int = 15  # Frames before detecting same gesture again
+    enable_continuous_mode: bool = False  # Toggle continuous recognition
+    temporal_confidence_threshold: float = 0.7  # Confidence threshold for temporal predictions
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

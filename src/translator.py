@@ -12,7 +12,7 @@ class Translator:
         """Initialize translation dictionaries"""
         # ASL alphabet to English mapping (direct)
         self.asl_to_english = {
-            'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E',
+            'A': 'Good', 'B': 'Bad', 'C': 'C', 'D': 'D', 'E': 'E',
             'F': 'F', 'G': 'G', 'H': 'H', 'I': 'I', 'J': 'J',
             'K': 'K', 'L': 'L', 'M': 'M', 'N': 'N', 'O': 'O',
             'P': 'P', 'Q': 'Q', 'R': 'R', 'S': 'S', 'T': 'T',

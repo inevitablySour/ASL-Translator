@@ -3,10 +3,20 @@ let stream = null;
 let isCapturing = false;
 let isLiveDetection = false;
 let predictionInterval = null;
-const PREDICTION_RATE = 500; // Predict every 500ms
+const PREDICTION_RATE = 200; // Predict every 200ms (5 FPS)
+const TEMPORAL_BUFFER_SIZE = 30; // Number of frames for temporal detection
+
+// Temporal detection state
+let detectionMode = 'static'; // 'static' or 'temporal'
+let frameBuffer = []; // Buffer for temporal detection
+let gestureHistory = [];
+let lastPredictedGesture = null;
+let predictionCooldown = false;
+const COOLDOWN_DURATION = 2000; // 2 seconds between same gesture predictions
 
 // DOM elements (initialized after DOM loads)
 let webcam, canvas, startBtn, stopBtn, toggleLiveBtn, languageSelect, resultsDiv, predictionDiv;
+let modeSelect, modeInfo, historyDiv, clearHistoryBtn;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,13 +27,19 @@ document.addEventListener('DOMContentLoaded', () => {
     stopBtn = document.getElementById('stopBtn');
     toggleLiveBtn = document.getElementById('toggleLiveBtn');
     languageSelect = document.getElementById('language');
+    modeSelect = document.getElementById('detectionMode');
+    modeInfo = document.getElementById('modeInfo');
     resultsDiv = document.getElementById('results');
     predictionDiv = document.getElementById('prediction');
+    historyDiv = document.getElementById('gestureHistory');
+    clearHistoryBtn = document.getElementById('clearHistory');
     
     // Event listeners
     startBtn.addEventListener('click', startCamera);
     stopBtn.addEventListener('click', stopCamera);
     toggleLiveBtn.addEventListener('click', toggleLiveDetection);
+    modeSelect.addEventListener('change', onModeChange);
+    clearHistoryBtn.addEventListener('click', clearGestureHistory);
     
     // Check API health
     checkHealth();
@@ -89,7 +105,14 @@ function startLiveDetection() {
     toggleLiveBtn.classList.remove('btn-success');
     toggleLiveBtn.classList.add('btn-warning');
     
-    showMessage('Live detection active...', 'success');
+    // Clear buffer when starting
+    frameBuffer = [];
+    
+    if (detectionMode === 'temporal') {
+        showMessage('Live detection active... Building frame buffer (0/30)', 'info');
+    } else {
+        showMessage('Live detection active...', 'success');
+    }
     
     // Start continuous prediction
     predictionInterval = setInterval(captureAndPredict, PREDICTION_RATE);
@@ -129,27 +152,61 @@ async function captureAndPredict() {
         // Get selected language
         const language = languageSelect.value;
         
-        // Send to API
-        const response = await fetch('/predict', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                image: imageData,
-                language: language
-            })
-        });
+        let result;
         
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Prediction failed');
+        if (detectionMode === 'temporal') {
+            // Add frame to buffer
+            frameBuffer.push(imageData);
+            
+            // Keep buffer at target size
+            if (frameBuffer.length > TEMPORAL_BUFFER_SIZE) {
+                frameBuffer.shift();
+            }
+            
+            // Only predict when buffer is full
+            if (frameBuffer.length >= TEMPORAL_BUFFER_SIZE) {
+                result = await predictTemporal(language);
+            } else {
+                // Show buffer filling progress
+                if (frameBuffer.length === 1) {
+                    showMessage(`Temporal mode: Buffering frames (${frameBuffer.length}/${TEMPORAL_BUFFER_SIZE})...`, 'info');
+                }
+                isCapturing = false;
+                return; // Wait for more frames
+            }
+        } else {
+            // Static mode - single frame prediction
+            result = await predictStatic(imageData, language);
         }
         
-        const result = await response.json();
-        
         // Display results
-        displayResults(result);
+        if (result) {
+            // Check cooldown for temporal mode
+            if (detectionMode === 'temporal') {
+                // If same gesture as last and in cooldown, skip
+                if (predictionCooldown && result.gesture === lastPredictedGesture) {
+                    isCapturing = false;
+                    return;
+                }
+                
+                // New gesture or cooldown expired
+                if (result.gesture !== lastPredictedGesture || !predictionCooldown) {
+                    displayResults(result);
+                    addToHistory(result);
+                    lastPredictedGesture = result.gesture;
+                    
+                    // Start cooldown
+                    predictionCooldown = true;
+                    setTimeout(() => {
+                        predictionCooldown = false;
+                    }, COOLDOWN_DURATION);
+                }
+            } else {
+                // Static mode - no cooldown
+                displayResults(result);
+                addToHistory(result);
+            }
+        }
         
     } catch (error) {
         console.error('Error during prediction:', error);
@@ -160,6 +217,50 @@ async function captureAndPredict() {
     } finally {
         isCapturing = false;
     }
+}
+
+// Static prediction (single frame)
+async function predictStatic(imageData, language) {
+    const response = await fetch('/predict', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            image: imageData,
+            language: language
+        })
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Prediction failed');
+    }
+    
+    const result = await response.json();
+    result.gesture_type = 'static';
+    return result;
+}
+
+// Temporal prediction (sequence of frames)
+async function predictTemporal(language) {
+    const response = await fetch('/predict/temporal', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            frames: frameBuffer,
+            language: language
+        })
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Temporal prediction failed');
+    }
+    
+    return await response.json();
 }
 
 // Display prediction results
@@ -192,10 +293,88 @@ function displayResults(result) {
     
     document.getElementById('processingTime').textContent = `${result.processing_time_ms.toFixed(2)} ms`;
     
+    // Display gesture type if available
+    const gestureTypeEl = document.getElementById('gestureType');
+    if (result.gesture_type) {
+        gestureTypeEl.textContent = result.gesture_type.charAt(0).toUpperCase() + result.gesture_type.slice(1);
+        gestureTypeEl.style.color = result.gesture_type === 'dynamic' ? '#007bff' : '#6c757d';
+    }
+    
     // Only show success message if not in live mode
     if (!isLiveDetection) {
         showMessage('Prediction successful!', 'success');
     }
+}
+
+// Handle mode change
+function onModeChange() {
+    detectionMode = modeSelect.value;
+    frameBuffer = []; // Clear buffer when switching modes
+    
+    // Update info text
+    if (detectionMode === 'temporal') {
+        modeInfo.textContent = 'Best for dynamic signs like J, Z (requires motion)';
+    } else {
+        modeInfo.textContent = 'Best for static letters like A, B, C';
+    }
+    
+    console.log('Detection mode changed to:', detectionMode);
+}
+
+// Add gesture to history
+function addToHistory(result) {
+    const timestamp = new Date().toLocaleTimeString();
+    gestureHistory.push({
+        gesture: result.gesture,
+        translation: result.translation,
+        confidence: result.confidence,
+        timestamp: timestamp
+    });
+    
+    // Keep last 20 gestures
+    if (gestureHistory.length > 20) {
+        gestureHistory.shift();
+    }
+    
+    updateHistoryDisplay();
+}
+
+// Update history display
+function updateHistoryDisplay() {
+    const placeholder = historyDiv.querySelector('.placeholder');
+    if (placeholder && gestureHistory.length > 0) {
+        placeholder.style.display = 'none';
+    }
+    
+    // Build gesture sequence string
+    const gestureSequence = gestureHistory
+        .map(item => item.gesture)
+        .filter(g => g !== 'UNKNOWN')
+        .join('');
+    
+    historyDiv.innerHTML = `
+        <div class="history-content">
+            <div class="gesture-sequence">
+                <strong>Gesture Sequence:</strong> ${gestureSequence || '(none)'}
+            </div>
+            <div class="history-items">
+                ${gestureHistory.slice().reverse().slice(0, 10).map(item => `
+                    <div class="history-item">
+                        <span class="history-gesture">${item.gesture}</span>
+                        <span class="history-translation">${item.translation}</span>
+                        <span class="history-confidence">${(item.confidence * 100).toFixed(0)}%</span>
+                        <span class="history-time">${item.timestamp}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Clear gesture history
+function clearGestureHistory() {
+    gestureHistory = [];
+    historyDiv.innerHTML = '<p class="placeholder">Start detection to build gesture history...</p>';
 }
 
 // Show message to user
