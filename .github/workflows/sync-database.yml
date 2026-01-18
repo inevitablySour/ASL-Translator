@@ -1,0 +1,43 @@
+name: Sync SQLite to PostgreSQL
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'data/feedback.db'
+
+jobs:
+  sync-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install sqlalchemy psycopg2-binary
+      
+      - name: Run migration to PostgreSQL
+        env:
+          DATABASE_URL: ${{ secrets.POSTGRES_DATABASE_URL }}
+        run: |
+          python migrate_to_postgres.py
+      
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✓ Database sync completed successfully"
+      
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "✗ Database sync failed"
+          exit 1
