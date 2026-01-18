@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     data_dir: str = "data/"
 
     # Language
-    default_language: str = "english"  # or "dutch"
+    default_language: str = "english"  # Supported: "english", "dutch"
 
     class Config:
         env_file = ".env"

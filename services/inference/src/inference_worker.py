@@ -4,6 +4,7 @@ can call one function with the corresponding data and the rest gets fixed!!
 '''
 from hand_detector import HandDetector
 from gesture_classifier import GestureClassifier
+from translator import Translator
 import numpy as np
 import cv2
 import base64
@@ -26,10 +27,10 @@ def base64_to_bgr(base64_str: str) -> np.ndarray:
 
     return image
 
-def predict_gesture_from_base64(base64_image: str) -> dict:
+def predict_gesture_from_base64(base64_image: str, language: str = "english") -> dict:
     """
-    Input: base64 webcam frame
-    Output: {gesture, confidence}
+    Input: base64 webcam frame, language
+    Output: {gesture, confidence, translation, language}
     """
 
     # 1. Decode image
@@ -42,20 +43,28 @@ def predict_gesture_from_base64(base64_image: str) -> dict:
         if not hands:
             return {
                 "gesture": "NO_HAND",
-                "confidence": 0.0
+                "confidence": 0.0,
+                "translation": "No hand detected",
+                "language": language
             }
 
         hand = hands[0]
         features = detector.extract_features(hand)
 
-        # 4. Predict gesture
+    # 3. Predict gesture
     classifier = GestureClassifier()
     prediction = classifier.predict(features, image=image)
 
     # ✅ handle tuple output
     label, conf = prediction[0], prediction[1]
 
+    # 4. Translate gesture
+    translator = Translator()
+    translation = translator.translate(label, language)
+
     return {
         "gesture": label,
-        "confidence": float(conf)
+        "confidence": float(conf),
+        "translation": translation,
+        "language": language
     }

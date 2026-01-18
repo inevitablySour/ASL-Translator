@@ -35,6 +35,7 @@ def create_ID():
 # Gets the data from web and convert it into this object
 class PredictionRequest(BaseModel):
     image: str
+    language: Optional[str] = "english"
 
 # How to retrieve the data back from the inference.
 class PredictionResponse(BaseModel):
@@ -50,7 +51,7 @@ connection_producer = None
 connection_consumer = None
 consumer_thread = None
 
-# Start consuming!! nom nom🍔
+# Start consuming!!
 def start_consuming(connection):
     consumer.consume_message_inference(connection)
 
@@ -104,7 +105,7 @@ async def predict_gesture(request: PredictionRequest):
     # Create a job ID for the request so that we get the right answer back, instead of just pulling the first from the stack
     job_id = create_ID()
 
-    payload = {"job_id": job_id, "image": request.image}
+    payload = {"job_id": job_id, "image": request.image, "language": request.language}
 
     # Send the message to the producer, who sends it to the broker
     producer.send_message_broker(connection_producer, "inference_queue", payload)
@@ -115,16 +116,17 @@ async def predict_gesture(request: PredictionRequest):
     print(f"- API   ::::: {data}")
     predict_gesture = data[0]
     confidence = data[1]
+    translation = data[2]
+    language = data[3]
     proc_time = time.time() - start_time
-
 
     return {
         "job_id": job_id,
         "gesture": predict_gesture,
-        'translation': "Yes",
+        'translation': translation,
         'confidence': confidence,
-        'language': "little bitch",
-        'processing_time_ms': time.time()-start_time
+        'language': language,
+        'processing_time_ms': proc_time
     }
 
 

@@ -13,10 +13,19 @@ def callback(ch, method, properties, body):
     api_data = json.loads(body.decode("utf-8"))
     job_id = api_data["job_id"]
     image = api_data["image"]
-    inference_data = inference_worker.predict_gesture_from_base64(image)
+    language = api_data.get("language", "english")  # Default to english if not provided
+    inference_data = inference_worker.predict_gesture_from_base64(image, language)
     gesture = inference_data["gesture"]
     confidence = inference_data["confidence"]
-    new_payload = {"job_id": job_id, "gesture": gesture, "confidence": confidence}
+    translation = inference_data["translation"]
+    lang = inference_data["language"]
+    new_payload = {
+        "job_id": job_id, 
+        "gesture": gesture, 
+        "confidence": confidence,
+        "translation": translation,
+        "language": lang
+    }
     print(new_payload)
     ch.queue_declare(queue=api_queue)
     ch.basic_publish(
