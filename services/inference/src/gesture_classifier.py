@@ -47,15 +47,18 @@ class GestureClassifier:
 
         # Try to load custom trained model if available
         if model_path is None:
-            model_path = Path(settings.models_dir) / "asl_classifier.pkl"
-            logger.info(f"Using default model path: {model_path}")
+            model_path = self._get_active_model_path()
+            logger.info(f"Using active model path from database: {model_path}")
 
-        logger.info(f"Checking for model at: {Path(model_path).resolve()}")
-        if Path(model_path).exists():
-            logger.info(f"Model file found, loading...")
-            self.load_model(model_path)
+        if model_path:
+            logger.info(f"Checking for model at: {Path(model_path).resolve()}")
+            if Path(model_path).exists():
+                logger.info(f"Model file found, loading...")
+                self.load_model(model_path)
+            else:
+                logger.warning(f"Model file NOT found at {Path(model_path).resolve()}")
         else:
-            logger.warning(f"Model file NOT found at {Path(model_path).resolve()}")
+            logger.warning("No active model found in database")
 
     def predict(self, features: np.ndarray, image: Optional[np.ndarray] = None) -> Tuple[str, float]:
         """
@@ -283,6 +286,52 @@ class GestureClassifier:
             logger.warning("Falling back to heuristic-based classification")
             self.model = None
 
+    def _get_active_model_path(self) -> Optional[str]:
+        """
+        Get the file path of the currently active model from database
+        
+        Returns:
+            Path to active model file, or None if no active model found
+        """
+        try:
+            # Import database modules
+            import sys
+            import os
+            
+            # Try multiple paths to find database module
+            possible_paths = [
+                '/app/api_src',  # Docker: training service mounts api_src
+                '/src/src',      # Docker: api service path
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'api', 'src'),  # Local
+            ]
+            
+            for api_src_path in possible_paths:
+                if os.path.exists(api_src_path) and api_src_path not in sys.path:
+                    sys.path.insert(0, api_src_path)
+                    break
+            
+            from database import get_session, init_db, Model
+            
+            engine = init_db()
+            session = get_session(engine)
+            
+            # Query for active model
+            active_model = session.query(Model).filter_by(is_active=True).first()
+            
+            if active_model:
+                logger.info(f"Found active model: {active_model.version}")
+                model_path = active_model.file_path
+                session.close()
+                return model_path
+            else:
+                logger.warning("No active model found in database")
+                session.close()
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error querying database for active model: {e}", exc_info=True)
+            return None
+    
     def is_confident(self, confidence: float) -> bool:
         """
         Check if prediction confidence meets threshold

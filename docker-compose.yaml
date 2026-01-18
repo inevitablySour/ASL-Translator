@@ -18,6 +18,7 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+      - ./models:/app/models:ro
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: "5672"
@@ -33,12 +34,16 @@ services:
       context: ./services/inference
     volumes:
       - ./models:/app/models:ro
+      - ./services/api/src:/app/api_src:ro
+      - ./data:/app/data:ro
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: "5672"
       MODEL_QUEUE: inference_queue
       API_QUEUE: api_queue
+      DATABASE_URL: postgresql://asl_user:asl_password@postgres:5432/asl_translator
     depends_on:
+      - postgres
       - rabbitmq
   training:
     build:

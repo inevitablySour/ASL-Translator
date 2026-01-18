@@ -377,3 +377,43 @@ async def get_training_history():
         logger.error(f"Error getting training history: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/models/{model_id}/activate")
+async def activate_model(model_id: str):
+    """
+    Activate a specific model for inference
+    """
+    try:
+        from database import get_session, init_db, Model
+        
+        engine = init_db()
+        session = get_session(engine)
+        
+        # Check if model exists
+        model = session.query(Model).filter_by(id=model_id).first()
+        if not model:
+            session.close()
+            raise HTTPException(status_code=404, detail="Model not found")
+        
+        # Deactivate all models
+        session.query(Model).update({"is_active": False})
+        
+        # Activate the selected model
+        model.is_active = True
+        session.commit()
+        
+        logger.info(f"Activated model: {model.version} (ID: {model_id})")
+        
+        session.close()
+        
+        return {
+            "success": True,
+            "message": f"Model {model.version} activated successfully",
+            "model_id": model_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error activating model: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+

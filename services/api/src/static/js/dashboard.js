@@ -182,12 +182,24 @@ async function loadModels() {
             } else {
                 createdCell.textContent = 'N/A';
             }
+            
+            // Actions
+            const actionsCell = row.insertCell();
+            if (!model.is_active) {
+                const activateBtn = document.createElement('button');
+                activateBtn.textContent = 'Activate';
+                activateBtn.className = 'activate-btn';
+                activateBtn.onclick = () => activateModel(model.id, model.version);
+                actionsCell.appendChild(activateBtn);
+            } else {
+                actionsCell.textContent = '-';
+            }
         });
         
     } catch (error) {
         console.error('Error loading models:', error);
         const tbody = document.querySelector('#modelsTable tbody');
-        tbody.innerHTML = '<tr><td colspan="6" class="loading">Error loading models</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Error loading models</td></tr>';
     }
 }
 
@@ -277,6 +289,32 @@ async function loadFeedbackStats() {
         
     } catch (error) {
         console.error('Error loading feedback stats:', error);
+    }
+}
+
+// Activate a model
+async function activateModel(modelId, modelVersion) {
+    if (!confirm(`Are you sure you want to activate model "${modelVersion}"?\n\nThis will deactivate the current model and the inference service will start using the selected model.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/models/${modelId}/activate`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(`Model "${modelVersion}" activated successfully!\n\nNote: The inference service may need to be restarted to load the new model.`);
+            // Reload models table
+            await loadModels();
+        } else {
+            alert(`Failed to activate model: ${result.detail || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error activating model:', error);
+        alert('Failed to activate model. Please check the console for details.');
     }
 }
 
