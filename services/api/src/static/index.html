@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ASL Translator</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/feedback.css">
 </head>
 <body>
     <div class="container">
@@ -21,7 +22,7 @@
                 </div>
 
                 <div class="controls">
-                    <button id="startBtn" class="btn btn-primary">St Camera</button>
+                    <button id="startBtn" class="btn btn-primary">Start Camera</button>
                     <button id="stopBtn" class="btn btn-secondary" disabled>Stop Camera</button>
                     <button id="toggleLiveBtn" class="btn btn-success" disabled>Start Live Detection</button>
                 </div>
@@ -57,6 +58,25 @@
                     <div class="detail-row">
                         <span class="label">Processing Time:</span>
                         <span id="processingTime" class="value">-</span>
+                    </div>
+                </div>
+
+                <!-- Feedback Prompt -->
+                <div id="feedbackPrompt" class="feedback-prompt" style="display: none;">
+                    <div class="feedback-content">
+                        <h3>Help Improve Our Model!</h3>
+                        
+                        <!-- Summary of collected data -->
+                        <div id="feedbackSummary" class="feedback-summary"></div>
+                        
+                        <p class="privacy-notice">
+                            <small>📊 We only store hand landmark coordinates (not your photos) to improve accuracy.</small>
+                        </p>
+                        <p class="feedback-message">Would you like to contribute this data to improve our model?</p>
+                        <div class="feedback-buttons">
+                            <button id="feedbackYes" class="btn btn-success">✓ Yes, use my data</button>
+                            <button id="feedbackNo" class="btn btn-secondary">✗ No thanks</button>
+                        </div>
                     </div>
                 </div>
             </div>

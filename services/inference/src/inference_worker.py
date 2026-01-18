@@ -57,7 +57,8 @@ def predict_gesture_from_base64(base64_image: str, language: str = "english") ->
                 "gesture": "NO_HAND",
                 "confidence": 0.0,
                 "translation": "No hand detected",
-                "language": language
+                "language": language,
+                "landmarks": None
             }
 
         hand = hands[0]
@@ -78,11 +79,18 @@ def predict_gesture_from_base64(base64_image: str, language: str = "english") ->
     translation = translator.translate(label, language)
     logger.info(f"Translation: {label} -> {translation}")
 
+    # Include landmarks if confidence is high enough (for feedback collection)
+    landmarks_list = None
+    if conf >= 0.9:  # Threshold for feedback collection
+        landmarks_list = features.tolist()  # Convert numpy array to list
+        logger.debug(f"Including landmarks for feedback (conf={conf:.2f})")
+
     result = {
         "gesture": label,
         "confidence": float(conf),
         "translation": translation,
-        "language": language
+        "language": language,
+        "landmarks": landmarks_list
     }
     logger.info(f"Final result: {result}")
     return result

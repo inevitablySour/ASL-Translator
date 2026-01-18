@@ -5,8 +5,14 @@ let isLiveDetection = false;
 let predictionInterval = null;
 const PREDICTION_RATE = 500; // Predict every 500ms
 
+// Feedback collection during session
+let feedbackCandidates = []; // Store high-confidence predictions during live detection
+
 // DOM elements (initialized after DOM loads)
 let webcam, canvas, startBtn, stopBtn, toggleLiveBtn, languageSelect, resultsDiv, predictionDiv;
+let feedbackPrompt, feedbackYesBtn, feedbackNoBtn, feedbackSummary;
+let currentJobId = null;
+let currentLandmarks = null;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,11 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
     languageSelect = document.getElementById('language');
     resultsDiv = document.getElementById('results');
     predictionDiv = document.getElementById('prediction');
+    feedbackPrompt = document.getElementById('feedbackPrompt');
+    feedbackSummary = document.getElementById('feedbackSummary');
+    feedbackYesBtn = document.getElementById('feedbackYes');
+    feedbackNoBtn = document.getElementById('feedbackNo');
     
     // Event listeners
     startBtn.addEventListener('click', startCamera);
     stopBtn.addEventListener('click', stopCamera);
     toggleLiveBtn.addEventListener('click', toggleLiveDetection);
+    feedbackYesBtn.addEventListener('click', () => submitFeedback(true));
+    feedbackNoBtn.addEventListener('click', () => submitFeedback(false));
 });
 
 // Start camera when the button gets pressed.
@@ -85,6 +97,9 @@ function startLiveDetection() {
     toggleLiveBtn.classList.remove('btn-success');
     toggleLiveBtn.classList.add('btn-warning');
     
+    // Clear previous session data
+    feedbackCandidates = [];
+    
     showMessage('Live detection active...', 'success');
     
     // Start continuous prediction
@@ -104,6 +119,11 @@ function stopLiveDetection() {
     }
     
     showMessage('Live detection stopped.', 'info');
+    
+    // Show feedback prompt if we have high-confidence predictions
+    if (feedbackCandidates.length > 0) {
+        showFeedbackSummary();
+    }
 }
 
 // Capture frame and send for prediction
@@ -143,6 +163,21 @@ async function captureAndPredict() {
         }
         
         const result = await response.json();
+        
+        // Store job ID and landmarks for feedback
+        currentJobId = result.job_id;
+        currentLandmarks = result.landmarks;
+        
+        // Collect high-confidence predictions during live detection
+        if (isLiveDetection && result.landmarks && result.confidence >= 0.9 && result.gesture !== 'NO_HAND') {
+            feedbackCandidates.push({
+                job_id: result.job_id,
+                gesture: result.gesture,
+                translation: result.translation,
+                confidence: result.confidence,
+                landmarks: result.landmarks
+            });
+        }
         
         // Display results
         displayResults(result);
@@ -188,9 +223,83 @@ function displayResults(result) {
     
     document.getElementById('processingTime').textContent = `${result.processing_time_ms.toFixed(2)} ms`;
     
+    // Don't show feedback prompt during live detection - we'll show it after stopping
+    feedbackPrompt.style.display = 'none';
+    
     // Only show success message if not in live mode
     if (!isLiveDetection) {
         showMessage('Prediction successful!', 'success');
+    }
+}
+
+// Show feedback summary after stopping live detection
+function showFeedbackSummary() {
+    // Group by gesture and count
+    const gestureGroups = {};
+    feedbackCandidates.forEach(candidate => {
+        if (!gestureGroups[candidate.gesture]) {
+            gestureGroups[candidate.gesture] = [];
+        }
+        gestureGroups[candidate.gesture].push(candidate);
+    });
+    
+    // Build summary HTML
+    let summaryHTML = '<h4>Training Data Collected</h4>';
+    summaryHTML += '<p class="feedback-description">We collected high-confidence predictions during your session:</p>';
+    summaryHTML += '<ul class="gesture-summary">';
+    
+    for (const [gesture, predictions] of Object.entries(gestureGroups)) {
+        const avgConfidence = (predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length * 100).toFixed(1);
+        summaryHTML += `<li><strong>${gesture}</strong>: ${predictions.length} samples (avg. ${avgConfidence}% confidence)</li>`;
+    }
+    
+    summaryHTML += '</ul>';
+    summaryHTML += `<p class="total-samples">Total: <strong>${feedbackCandidates.length} samples</strong></p>`;
+    
+    feedbackSummary.innerHTML = summaryHTML;
+    feedbackPrompt.style.display = 'block';
+}
+
+// Submit feedback for all collected samples
+async function submitFeedback(accepted) {
+    if (feedbackCandidates.length === 0) {
+        console.error('No feedback candidates available');
+        return;
+    }
+    
+    try {
+        if (accepted) {
+            // Submit all collected samples
+            let successCount = 0;
+            for (const candidate of feedbackCandidates) {
+                const response = await fetch('/feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        job_id: candidate.job_id,
+                        accepted: true
+                    })
+                });
+                
+                if (response.ok) {
+                    successCount++;
+                }
+            }
+            
+            showMessage(`Thank you! ${successCount} samples added to training data.`, 'success');
+        } else {
+            showMessage('No data was saved. Thank you!', 'info');
+        }
+        
+        // Hide feedback prompt and clear candidates
+        feedbackPrompt.style.display = 'none';
+        feedbackCandidates = [];
+        
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        showMessage('Failed to submit feedback', 'error');
     }
 }
 

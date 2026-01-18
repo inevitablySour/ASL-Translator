@@ -4,6 +4,8 @@ services:
       context: ./services/api
     ports:
       - "8000:8000"
+    volumes:
+      - ./data:/app/data
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: "5672"
@@ -24,6 +26,19 @@ services:
       API_QUEUE: api_queue
     depends_on:
       - rabbitmq
+  training:
+    build:
+      context: ./services/training
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./services/api/src:/app/api_src:ro
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      PYTHONUNBUFFERED: "1"
+    depends_on:
+      - rabbitmq
+      - api
   rabbitmq: 
     image: rabbitmq:3-management
     container_name: rabbitmq

@@ -9,8 +9,20 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.model_trainer import ModelTrainer
-from src.data_collector import DataCollector
+try:
+    from src.model_trainer import ModelTrainer
+    from src.db_data_loader import DatabaseDataLoader as DataLoader
+    DATA_SOURCE = 'database'
+except ImportError:
+    # Fallback: try old data collector if it exists
+    try:
+        from src.model_trainer import ModelTrainer
+        from src.data_collector import DataCollector as DataLoader
+        DATA_SOURCE = 'json'
+    except ImportError:
+        print("Error: Could not import required modules")
+        print("Make sure src/model_trainer.py and src/db_data_loader.py exist")
+        sys.exit(1)
 
 
 def main():
@@ -65,14 +77,21 @@ def main():
     print("ASL Gesture Model Training")
     print("=" * 60)
     print(f"Model Name: {args.model_name}")
-    print(f"Data Directory: {args.data_dir}")
+    print(f"Data Source: {DATA_SOURCE}")
+    if DATA_SOURCE == 'json':
+        print(f"Data Directory: {args.data_dir}")
     print(f"Model Type: {args.model_type}")
     print("=" * 60)
     
     # Load data
-    print(f"\nLoading dataset from {args.data_dir}...")
-    collector = DataCollector(data_dir=args.data_dir)
-    features, labels = collector.load_dataset()
+    if DATA_SOURCE == 'database':
+        print(f"\nLoading dataset from database...")
+        loader = DataLoader()
+    else:
+        print(f"\nLoading dataset from {args.data_dir}...")
+        loader = DataLoader(data_dir=args.data_dir)
+    
+    features, labels = loader.load_dataset()
     
     if len(features) == 0:
         print(f"Error: No training data found in {args.data_dir}!")
@@ -80,10 +99,15 @@ def main():
         sys.exit(1)
     
     # Show dataset info
-    info = collector.get_dataset_info()
+    info = loader.get_dataset_info()
     print(f"\nDataset Info:")
     print(f"Total samples: {info['total_samples']}")
     print(f"Gestures: {len(info['gestures'])}")
+    
+    if DATA_SOURCE == 'database' and 'samples_per_source' in info:
+        print(f"\nSamples by source:")
+        for source, count in info['samples_per_source'].items():
+            print(f"  {source}: {count}")
     
     # Initialize trainer
     trainer = ModelTrainer(model_type=args.model_type, model_name=args.model_name)

@@ -28,13 +28,15 @@ def callback(ch, method, properties, body):
         confidence = inference_data["confidence"]
         translation = inference_data["translation"]
         lang = inference_data["language"]
+        landmarks = inference_data.get("landmarks", None)
         
         new_payload = {
             "job_id": job_id, 
             "gesture": gesture, 
             "confidence": confidence,
             "translation": translation,
-            "language": lang
+            "language": lang,
+            "landmarks": landmarks
         }
         logger.info(f"[JOB {job_id}] Inference complete: {new_payload}")
         print(new_payload)

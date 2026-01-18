@@ -35,6 +35,15 @@ except ImportError:
     logging.basicConfig(level=logging.DEBUG)
     
 logger = logging.getLogger(__name__)
+
+# Import feedback manager
+try:
+    from feedback_manager import FeedbackManager
+    feedback_manager = FeedbackManager(retraining_threshold=200)
+    logger.info("FeedbackManager initialized")
+except Exception as e:
+    logger.error(f"Failed to initialize FeedbackManager: {e}")
+    feedback_manager = None
 # Get the queues from the compose files
 inference_queue = os.getenv("MODEL_QUEUE", "Letterbox")
 
@@ -57,6 +66,13 @@ class PredictionResponse(BaseModel):
     confidence: float
     language: str
     processing_time_ms: float
+    landmarks: Optional[List[float]] = None  # Hand landmarks for feedback
+
+# Feedback request model
+class FeedbackRequest(BaseModel):
+    job_id: str
+    accepted: bool
+    corrected_gesture: Optional[str] = None
 
 
 connection_producer = None
@@ -137,9 +153,25 @@ async def predict_gesture(request: PredictionRequest):
         confidence = data[1]
         translation = data[2]
         language = data[3]
+        landmarks = data[4] if len(data) > 4 else None
         proc_time = time.time() - start_time
         
         logger.info(f"[JOB {job_id}] Returning prediction: {predict_gesture} ({confidence:.4f})")
+        
+        # Store prediction in database for feedback
+        if feedback_manager:
+            try:
+                feedback_manager.store_prediction(
+                    job_id=job_id,
+                    gesture=predict_gesture,
+                    translation=translation,
+                    confidence=confidence,
+                    language=language,
+                    processing_time_ms=proc_time * 1000,
+                    landmarks=landmarks
+                )
+            except Exception as e:
+                logger.error(f"Failed to store prediction in database: {e}")
         
         return {
             "job_id": job_id,
@@ -147,7 +179,8 @@ async def predict_gesture(request: PredictionRequest):
             'translation': translation,
             'confidence': confidence,
             'language': language,
-            'processing_time_ms': proc_time
+            'processing_time_ms': proc_time,
+            'landmarks': landmarks
         }
     except HTTPException:
         raise
@@ -155,4 +188,60 @@ async def predict_gesture(request: PredictionRequest):
         logger.error(f"[JOB {job_id}] Error in prediction: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/feedback")
+async def submit_feedback(request: FeedbackRequest):
+    """
+    Submit user feedback for a prediction
+    Only accepts feedback for predictions with landmarks (high confidence)
+    """
+    if not feedback_manager:
+        raise HTTPException(status_code=500, detail="Feedback system not available")
+    
+    try:
+        logger.info(f"Received feedback for job {request.job_id}: accepted={request.accepted}")
+        
+        result = feedback_manager.submit_feedback(
+            job_id=request.job_id,
+            accepted=request.accepted,
+            corrected_gesture=request.corrected_gesture
+        )
+        
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to submit feedback"))
+        
+        response = {
+            "success": True,
+            "message": "Thank you for your feedback!",
+            "feedback_id": result["feedback_id"]
+        }
+        
+        # Notify if retraining threshold reached
+        if result.get("should_retrain"):
+            response["message"] += " We have enough data to improve the model!"
+            logger.info(f"Retraining threshold reached after feedback {result['feedback_id']}")
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing feedback: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/feedback/stats")
+async def get_feedback_stats():
+    """
+    Get feedback statistics (for monitoring)
+    """
+    if not feedback_manager:
+        raise HTTPException(status_code=500, detail="Feedback system not available")
+    
+    try:
+        stats = feedback_manager.get_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting stats: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 

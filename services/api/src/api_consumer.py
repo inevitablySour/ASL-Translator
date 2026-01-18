@@ -56,8 +56,9 @@ def callback_function(ch, method, properties, body):
         confidence = data["confidence"]
         translation = data.get("translation", gesture)
         language = data.get("language", "english")
+        landmarks = data.get("landmarks", None)
         logger.info(f'[API-CONSUMER] Received result for job {job_id}: gesture={gesture}, confidence={confidence}')
-        all_jobs[job_id] = [gesture, confidence, translation, language]
+        all_jobs[job_id] = [gesture, confidence, translation, language, landmarks]
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
         logger.error(f"Error processing callback: {e}", exc_info=True)

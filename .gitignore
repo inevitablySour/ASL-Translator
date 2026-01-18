@@ -37,8 +37,8 @@ ENV/
 .env
 .env.local
 
-# MLflow
-mlruns/
+# MLflow - tracking complete training history in git
+# mlruns/ - now tracked for experiment persistence
 mlartifacts/
 
 # Models

@@ -1,0 +1,6 @@
+artifact_location: file:///app/models/mlruns/787750003353791902
+creation_time: 1768745878889
+experiment_id: '787750003353791902'
+last_update_time: 1768745878889
+lifecycle_stage: active
+name: asl_gesture_training

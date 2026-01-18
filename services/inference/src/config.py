@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     # Language
     default_language: str = "english"  # Supported: "english", "dutch"
 
+    # Feedback and Retraining
+    feedback_confidence_threshold: float = 0.9  # Min confidence to request feedback
+    retraining_sample_threshold: int = 200  # Number of feedback samples before retraining
+    database_url: str = "sqlite:///data/feedback.db"  # Feedback database URL
+
     class Config:
         env_file = ".env"
         case_sensitive = False
