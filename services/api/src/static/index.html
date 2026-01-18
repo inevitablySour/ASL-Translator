@@ -10,8 +10,11 @@
 <body>
     <div class="container">
         <header>
-            <h1>ASL Translator</h1>
-            <p>Real-time American Sign Language Recognition</p>
+            <div class="header-content">
+                <h1>ASL Translator</h1>
+                <p>Real-time American Sign Language Recognition</p>
+            </div>
+            <a href="/dashboard" class="btn btn-dashboard" target="_blank">Dashboard</a>
         </header>
 
         <main>
@@ -27,11 +30,10 @@
                     <button id="toggleLiveBtn" class="btn btn-success" disabled>Start Live Detection</button>
                 </div>
 
-                <div class="language-selector">
-                    <label for="language">Translation Language:</label>
-                    <select id="language">
-                        <option value="english">English</option>
-                        <option value="dutch">Dutch</option>
+                <div class="model-selector">
+                    <label for="model">Model Version:</label>
+                    <select id="model">
+                        <option value="">Loading...</option>
                     </select>
                 </div>
             </div>

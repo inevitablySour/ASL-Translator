@@ -56,7 +56,7 @@ def create_ID():
 # Gets the data from web and convert it into this object
 class PredictionRequest(BaseModel):
     image: str
-    language: Optional[str] = "english"
+    model: Optional[str] = None
 
 # How to retrieve the data back from the inference.
 class PredictionResponse(BaseModel):
@@ -135,7 +135,7 @@ async def predict_gesture(request: PredictionRequest):
     try:
         logger.info(f"[JOB {job_id}] Received prediction request")
         
-        payload = {"job_id": job_id, "image": request.image, "language": request.language}
+        payload = {"job_id": job_id, "image": request.image, "model": request.model}
         
         # Send the message to the producer
         logger.info(f"[JOB {job_id}] Sending to inference queue")
@@ -243,5 +243,137 @@ async def get_feedback_stats():
         return stats
     except Exception as e:
         logger.error(f"Error getting stats: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/dashboard")
+def dashboard():
+    """Serve the dashboard page"""
+    return FileResponse(BASE_DIR / "static" / "dashboard.html")
+
+
+@app.get("/api/stats")
+async def get_production_stats():
+    """
+    Get production performance statistics from database
+    """
+    try:
+        from database import get_session, init_db, Prediction
+        from sqlalchemy import func
+        from datetime import datetime, timedelta
+        
+        engine = init_db()
+        session = get_session(engine)
+        
+        # Overall stats
+        total_predictions = session.query(Prediction).count()
+        avg_processing_time = session.query(func.avg(Prediction.processing_time_ms)).scalar() or 0
+        avg_confidence = session.query(func.avg(Prediction.confidence)).scalar() or 0
+        
+        # Predictions by gesture
+        gesture_counts = session.query(
+            Prediction.gesture,
+            func.count(Prediction.job_id)
+        ).group_by(Prediction.gesture).all()
+        
+        # Recent predictions (last 24 hours)
+        yesterday = datetime.utcnow() - timedelta(days=1)
+        recent_count = session.query(Prediction).filter(
+            Prediction.created_at >= yesterday
+        ).count()
+        
+        # Confidence distribution
+        high_conf = session.query(Prediction).filter(Prediction.confidence >= 0.9).count()
+        medium_conf = session.query(Prediction).filter(
+            Prediction.confidence >= 0.7,
+            Prediction.confidence < 0.9
+        ).count()
+        low_conf = session.query(Prediction).filter(Prediction.confidence < 0.7).count()
+        
+        session.close()
+        
+        return {
+            "total_predictions": total_predictions,
+            "avg_processing_time_ms": round(avg_processing_time, 2),
+            "avg_confidence": round(avg_confidence, 4),
+            "predictions_24h": recent_count,
+            "gesture_distribution": {g: c for g, c in gesture_counts},
+            "confidence_distribution": {
+                "high": high_conf,
+                "medium": medium_conf,
+                "low": low_conf
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting production stats: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/models")
+async def get_models():
+    """
+    Get list of available models from database
+    """
+    try:
+        from database import get_session, init_db, Model
+        
+        engine = init_db()
+        session = get_session(engine)
+        
+        models = session.query(Model).order_by(Model.created_at.desc()).all()
+        
+        model_list = []
+        for model in models:
+            model_list.append({
+                "id": model.id,
+                "version": model.version,
+                "name": model.name,
+                "accuracy": model.accuracy,
+                "is_active": model.is_active,
+                "created_at": model.created_at.isoformat() if model.created_at else None,
+                "metadata": model.model_metadata
+            })
+        
+        session.close()
+        
+        return {"models": model_list}
+    except Exception as e:
+        logger.error(f"Error getting models: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/training-history")
+async def get_training_history():
+    """
+    Get training run history from database
+    """
+    try:
+        from database import get_session, init_db, TrainingRun, Model
+        
+        engine = init_db()
+        session = get_session(engine)
+        
+        runs = session.query(TrainingRun).order_by(TrainingRun.started_at.desc()).limit(20).all()
+        
+        run_list = []
+        for run in runs:
+            model = session.query(Model).filter_by(id=run.model_id).first() if run.model_id else None
+            run_list.append({
+                "id": run.id,
+                "model_version": model.version if model else None,
+                "samples_used": run.samples_used,
+                "feedback_samples": run.feedback_samples,
+                "status": run.status,
+                "accuracy": model.accuracy if model else None,
+                "started_at": run.started_at.isoformat() if run.started_at else None,
+                "completed_at": run.completed_at.isoformat() if run.completed_at else None,
+                "error_message": run.error_message
+            })
+        
+        session.close()
+        
+        return {"training_runs": run_list}
+    except Exception as e:
+        logger.error(f"Error getting training history: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 

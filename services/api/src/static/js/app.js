@@ -9,7 +9,7 @@ const PREDICTION_RATE = 500; // Predict every 500ms
 let feedbackCandidates = []; // Store high-confidence predictions during live detection
 
 // DOM elements (initialized after DOM loads)
-let webcam, canvas, startBtn, stopBtn, toggleLiveBtn, languageSelect, resultsDiv, predictionDiv;
+let webcam, canvas, startBtn, stopBtn, toggleLiveBtn, modelSelect, resultsDiv, predictionDiv;
 let feedbackPrompt, feedbackYesBtn, feedbackNoBtn, feedbackSummary;
 let currentJobId = null;
 let currentLandmarks = null;
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startBtn = document.getElementById('startBtn');
     stopBtn = document.getElementById('stopBtn');
     toggleLiveBtn = document.getElementById('toggleLiveBtn');
-    languageSelect = document.getElementById('language');
+    modelSelect = document.getElementById('model');
     resultsDiv = document.getElementById('results');
     predictionDiv = document.getElementById('prediction');
     feedbackPrompt = document.getElementById('feedbackPrompt');
@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleLiveBtn.addEventListener('click', toggleLiveDetection);
     feedbackYesBtn.addEventListener('click', () => submitFeedback(true));
     feedbackNoBtn.addEventListener('click', () => submitFeedback(false));
+    
+    // Load available models
+    loadModels();
 });
 
 // Start camera when the button gets pressed.
@@ -142,10 +145,10 @@ async function captureAndPredict() {
         // Convert to base64 so that it can be used by mediapipe and get send through the broker.
         const imageData = canvas.toDataURL('image/jpeg');
         
-        // Get selected language
-        const language = languageSelect.value;
+        // Get selected model
+        const selectedModel = modelSelect.value;
         
-        // Send the converted image to the API. On the predict it sends the image and
+        // Send the converted image to the API
         const response = await fetch('/predict', {
             method: 'POST',
             headers: {
@@ -153,7 +156,7 @@ async function captureAndPredict() {
             },
             body: JSON.stringify({
                 image: imageData,
-                language: language
+                model: selectedModel
             })
         });
         
@@ -300,6 +303,50 @@ async function submitFeedback(accepted) {
     } catch (error) {
         console.error('Error submitting feedback:', error);
         showMessage('Failed to submit feedback', 'error');
+    }
+}
+
+// Load available models from API
+async function loadModels() {
+    try {
+        const response = await fetch('/api/models');
+        const data = await response.json();
+        
+        modelSelect.innerHTML = '';
+        
+        if (data.models.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No models available';
+            modelSelect.appendChild(option);
+            modelSelect.disabled = true;
+            return;
+        }
+        
+        // Add models to select
+        data.models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.version;
+            const accuracy = model.accuracy ? `(${(model.accuracy * 100).toFixed(1)}%)` : '';
+            option.textContent = `${model.version} ${accuracy}`;
+            
+            // Select active model by default
+            if (model.is_active) {
+                option.selected = true;
+            }
+            
+            modelSelect.appendChild(option);
+        });
+        
+        // If no active model, select the first one
+        if (!data.models.some(m => m.is_active) && modelSelect.options.length > 0) {
+            modelSelect.selectedIndex = 0;
+        }
+        
+    } catch (error) {
+        console.error('Error loading models:', error);
+        modelSelect.innerHTML = '<option value="">Error loading models</option>';
+        modelSelect.disabled = true;
     }
 }
 
