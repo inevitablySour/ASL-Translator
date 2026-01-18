@@ -6,26 +6,33 @@ echo "Exporting PostgreSQL data to SQLite before shutdown..."
 
 # Check if PostgreSQL container is running
 if docker ps | grep -q "asl_postgres"; then
-    # Activate virtual environment and run export
-    if [ -d ".venv" ]; then
-        source .venv/bin/activate
-        if python export_to_sqlite.py; then
-            echo "Data exported successfully"
-        else
-            echo "Export failed, but continuing with shutdown..."
-        fi
-        deactivate
+    # Detect Python command - use active venv or find one
+    if [ -n "$VIRTUAL_ENV" ]; then
+        # Already in a virtual environment
+        PYTHON_CMD="$VIRTUAL_ENV/bin/python"
+    elif [ -d ".venv" ] && [ -f ".venv/bin/python" ]; then
+        # Local .venv directory
+        PYTHON_CMD=".venv/bin/python"
+    elif command -v python &> /dev/null && python -c "import sqlalchemy, psycopg2" 2>/dev/null; then
+        # System python with required packages
+        PYTHON_CMD="python"
+    elif command -v python3 &> /dev/null && python3 -c "import sqlalchemy, psycopg2" 2>/dev/null; then
+        # System python3 with required packages
+        PYTHON_CMD="python3"
     else
-        # Try without virtual environment
-        if python3 export_to_sqlite.py 2>/dev/null; then
-            echo "✓ Data exported successfully"
-        else
-            echo "Could not export data (missing dependencies or venv)"
-            echo "   Install: pip install sqlalchemy psycopg2-binary"
-        fi
+        echo "⚠️  Cannot find Python with sqlalchemy and psycopg2 installed"
+        echo "   Install with: pip install sqlalchemy psycopg2-binary"
+        PYTHON_CMD="python3"
+    fi
+    
+    if $PYTHON_CMD export_to_sqlite.py; then
+        echo "Data exported successfully"
+    else
+        echo "Export failed, but continuing with shutdown..."
+        echo "   Make sure dependencies are installed: pip install sqlalchemy psycopg2-binary"
     fi
 else
-    echo "ℹ️  PostgreSQL container not running, skipping export"
+    echo "PostgreSQL container not running, skipping export"
 fi
 
 echo ""

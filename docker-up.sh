@@ -12,14 +12,23 @@ sleep 5
 echo ""
 echo "🔍 Checking if database sync is needed..."
 
-# Activate virtual environment if it exists
-if [ -d ".venv" ]; then
-    source .venv/bin/activate
+# Detect Python command - use active venv or find one
+if [ -n "$VIRTUAL_ENV" ]; then
+    # Already in a virtual environment
+    PYTHON_CMD="$VIRTUAL_ENV/bin/python"
+elif [ -d ".venv" ] && [ -f ".venv/bin/python" ]; then
+    # Local .venv directory
+    PYTHON_CMD=".venv/bin/python"
+elif command -v python &> /dev/null && python -c "import sqlalchemy, psycopg2" 2>/dev/null; then
+    # System python with required packages
     PYTHON_CMD="python"
-elif command -v python3 &> /dev/null; then
+elif command -v python3 &> /dev/null && python3 -c "import sqlalchemy, psycopg2" 2>/dev/null; then
+    # System python3 with required packages
     PYTHON_CMD="python3"
 else
-    PYTHON_CMD="python"
+    echo "⚠️  Cannot find Python with sqlalchemy and psycopg2 installed"
+    echo "   Install with: pip install sqlalchemy psycopg2-binary"
+    PYTHON_CMD="python3"
 fi
 
 # Check if sync is needed
@@ -33,11 +42,6 @@ if $PYTHON_CMD check_and_sync.py; then
     fi
 else
     echo "Database is already up-to-date"
-fi
-
-# Deactivate venv if it was activated
-if [ -d ".venv" ]; then
-    deactivate
 fi
 
 echo ""

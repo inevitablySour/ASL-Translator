@@ -27,15 +27,6 @@ This script:
 python3 migrate_to_postgres.py
 ```
 
-## Local Setup (Git Hook)
-
-A pre-push hook automatically syncs `data/feedback.db` to PostgreSQL before each push.
-
-### How it works:
-1. When you run `git push`, the hook checks if `feedback.db` has changes
-2. If changes are detected and PostgreSQL is running, it runs `migrate_to_postgres.py`
-3. The push continues after successful sync
-
 ## Exporting from PostgreSQL to SQLite
 
 When you shut down Docker containers, PostgreSQL data is automatically exported back to SQLite.
