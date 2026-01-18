@@ -1,3 +1,4 @@
+# Jupyter/IPython dependencies
 appnope==0.1.4
 asttokens==3.0.1
 comm==0.2.3
@@ -28,3 +29,7 @@ stack-data==0.6.3
 tornado==6.5.4
 traitlets==5.14.3
 wcwidth==0.2.14
+
+# Database sync dependencies
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
