@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL Translator - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="/" class="nav-link">← Back to Translator</a>
+            <h1>ASL Translator Dashboard</h1>
+            <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+        </div>
+    </nav>
+    
+    <div class="dashboard-container">
+        <!-- Key Metrics Row -->
+        <div class="metrics-row">
+            <div class="metric-card">
+                <div class="metric-icon">📊</div>
+                <div class="metric-content">
+                    <div class="metric-value" id="totalPredictions">-</div>
+                    <div class="metric-label">Total Predictions</div>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">⚡</div>
+                <div class="metric-content">
+                    <div class="metric-value" id="avgLatency">-</div>
+                    <div class="metric-label">Avg Latency (ms)</div>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-content">
+                    <div class="metric-value" id="avgConfidence">-</div>
+                    <div class="metric-label">Avg Confidence</div>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">📈</div>
+                <div class="metric-content">
+                    <div class="metric-value" id="predictions24h">-</div>
+                    <div class="metric-label">Last 24 Hours</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts Row -->
+        <div class="charts-row">
+            <div class="card">
+                <h2>Gesture Distribution</h2>
+                <canvas id="gestureChart"></canvas>
+            </div>
+            
+            <div class="card">
+                <h2>Confidence Distribution</h2>
+                <canvas id="confidenceChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Model History -->
+        <div class="card full-width">
+            <h2>Model Versions</h2>
+            <div class="table-container">
+                <table id="modelsTable">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Name</th>
+                            <th>Accuracy</th>
+                            <th>Status</th>
+                            <th>Samples</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="6" class="loading">Loading models...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Training History -->
+        <div class="card full-width">
+            <h2>Training History</h2>
+            <div class="table-container">
+                <table id="trainingTable">
+                    <thead>
+                        <tr>
+                            <th>Model Version</th>
+                            <th>Total Samples</th>
+                            <th>Feedback Samples</th>
+                            <th>Accuracy</th>
+                            <th>Status</th>
+                            <th>Started</th>
+                            <th>Completed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="7" class="loading">Loading training history...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Feedback Stats -->
+        <div class="card">
+            <h2>Feedback System</h2>
+            <div id="feedbackStats" class="feedback-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Total Feedback:</span>
+                    <span class="stat-value" id="totalFeedback">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Unused Feedback:</span>
+                    <span class="stat-value" id="unusedFeedback">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Retraining Threshold:</span>
+                    <span class="stat-value" id="threshold">200</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="dashboard-footer">
+        <p>Last updated: <span id="lastUpdated">-</span></p>
+        <p>Auto-refreshes every 30 seconds</p>
+    </footer>
+    
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

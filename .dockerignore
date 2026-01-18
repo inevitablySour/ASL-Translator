@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+
+# Logs
+*.log
+logs/
+
+# Data (not needed in containers - mounted as volumes)
+data/gestures/
+data/*.jpg
+data/*.png
+
+# Models (mounted as volumes)
+models/
+
+# MLflow (mounted as volumes)
+mlruns/
+mlartifacts/
+
+# Docker
+docker-compose*.yaml
+Dockerfile*
+.dockerignore
