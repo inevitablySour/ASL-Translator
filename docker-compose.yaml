@@ -1,4 +1,16 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: asl_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: asl_user
+      POSTGRES_PASSWORD: asl_password
+      POSTGRES_DB: asl_translator
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
   api:
     build: 
       context: ./services/api
@@ -12,8 +24,10 @@ services:
       MODEL_QUEUE: inference_queue
       API_QUEUE: api_queue
       DATA_QUEUE: data_queue
+      DATABASE_URL: postgresql://asl_user:asl_password@postgres:5432/asl_translator
     depends_on:
       - rabbitmq
+      - postgres
   inference:
     build: 
       context: ./services/inference
@@ -36,8 +50,10 @@ services:
     environment:
       RABBITMQ_HOST: rabbitmq
       PYTHONUNBUFFERED: "1"
+      DATABASE_URL: postgresql://asl_user:asl_password@postgres:5432/asl_translator
     depends_on:
       - rabbitmq
+      - postgres
       - api
   rabbitmq: 
     image: rabbitmq:3-management
@@ -47,4 +63,5 @@ services:
       - "5672:5672"
       - "15672:15672"
 
-
+volumes:
+  postgres_data:

@@ -53,6 +53,7 @@ data/*.jpg
 data/*.png
 data/*.mp4
 !data/.gitkeep
+!data/feedback.db
 
 # Logs
 *.log
