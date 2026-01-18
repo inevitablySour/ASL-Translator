@@ -8,6 +8,10 @@ from translator import Translator
 import numpy as np
 import cv2
 import base64
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def base64_to_bgr(base64_str: str) -> np.ndarray:
@@ -32,15 +36,23 @@ def predict_gesture_from_base64(base64_image: str, language: str = "english") ->
     Input: base64 webcam frame, language
     Output: {gesture, confidence, translation, language}
     """
+    logger.info(f"Starting prediction pipeline for language: {language}")
 
     # 1. Decode image
-    image = base64_to_bgr(base64_image)
+    try:
+        image = base64_to_bgr(base64_image)
+        logger.debug(f"Image decoded. Shape: {image.shape}")
+    except Exception as e:
+        logger.error(f"Failed to decode image: {e}", exc_info=True)
+        raise
 
     # 2. Detect hand + landmarks
     with HandDetector() as detector:
         _, hands = detector.detect_hands(image)
+        logger.info(f"Hand detection complete. Hands found: {len(hands)}")
 
         if not hands:
+            logger.warning("No hand detected in image")
             return {
                 "gesture": "NO_HAND",
                 "confidence": 0.0,
@@ -50,21 +62,27 @@ def predict_gesture_from_base64(base64_image: str, language: str = "english") ->
 
         hand = hands[0]
         features = detector.extract_features(hand)
+        logger.debug(f"Features extracted. Shape: {features.shape}")
 
     # 3. Predict gesture
+    logger.info("Initializing gesture classifier...")
     classifier = GestureClassifier()
     prediction = classifier.predict(features, image=image)
 
     # ✅ handle tuple output
     label, conf = prediction[0], prediction[1]
+    logger.info(f"Prediction: {label} with confidence {conf:.4f}")
 
     # 4. Translate gesture
     translator = Translator()
     translation = translator.translate(label, language)
+    logger.info(f"Translation: {label} -> {translation}")
 
-    return {
+    result = {
         "gesture": label,
         "confidence": float(conf),
         "translation": translation,
         "language": language
     }
+    logger.info(f"Final result: {result}")
+    return result

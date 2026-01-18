@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     mlflow_experiment_name: str = "asl-gesture-recognition"
 
     # Paths
-    models_dir: str = "models/"
-    data_dir: str = "data/"
+    models_dir: str = "/app/models/"
+    data_dir: str = "/app/data/"
 
     # Language
     default_language: str = "english"  # Supported: "english", "dutch"

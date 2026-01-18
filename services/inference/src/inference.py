@@ -3,6 +3,12 @@ import time
 import json
 import os
 import inference_worker as inference_worker
+from logging_config import setup_logging
+import logging
+
+# Set up logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 inference_queue = os.getenv("MODEL_QUEUE", "Letterbox")
 api_queue = os.getenv("API_QUEUE", "Letterbox")
@@ -10,32 +16,41 @@ conn = None
 
 
 def callback(ch, method, properties, body):
-    api_data = json.loads(body.decode("utf-8"))
-    job_id = api_data["job_id"]
-    image = api_data["image"]
-    language = api_data.get("language", "english")  # Default to english if not provided
-    inference_data = inference_worker.predict_gesture_from_base64(image, language)
-    gesture = inference_data["gesture"]
-    confidence = inference_data["confidence"]
-    translation = inference_data["translation"]
-    lang = inference_data["language"]
-    new_payload = {
-        "job_id": job_id, 
-        "gesture": gesture, 
-        "confidence": confidence,
-        "translation": translation,
-        "language": lang
-    }
-    print(new_payload)
-    ch.queue_declare(queue=api_queue)
-    ch.basic_publish(
-        exchange="",
-        routing_key=api_queue,
-        body=json.dumps(new_payload).encode("utf-8"), # Makes the dict. to json, then to bytes for RabbitMQ
-        properties=pika.BasicProperties(content_type="api/prediction/json")
-    )
-    print("- [INFERENCE - Prod.] Data sent to broker!")
-    ch.basic_ack(delivery_tag = method.delivery_tag)
+    try:
+        api_data = json.loads(body.decode("utf-8"))
+        job_id = api_data["job_id"]
+        image = api_data["image"]
+        language = api_data.get("language", "english")  # Default to english if not provided
+        logger.info(f"[JOB {job_id}] Processing inference request")
+        
+        inference_data = inference_worker.predict_gesture_from_base64(image, language)
+        gesture = inference_data["gesture"]
+        confidence = inference_data["confidence"]
+        translation = inference_data["translation"]
+        lang = inference_data["language"]
+        
+        new_payload = {
+            "job_id": job_id, 
+            "gesture": gesture, 
+            "confidence": confidence,
+            "translation": translation,
+            "language": lang
+        }
+        logger.info(f"[JOB {job_id}] Inference complete: {new_payload}")
+        print(new_payload)
+        
+        ch.queue_declare(queue=api_queue)
+        ch.basic_publish(
+            exchange="",
+            routing_key=api_queue,
+            body=json.dumps(new_payload).encode("utf-8"), # Makes the dict. to json, then to bytes for RabbitMQ
+            properties=pika.BasicProperties(content_type="api/prediction/json")
+        )
+        logger.info(f"[JOB {job_id}] Results sent to broker")
+        ch.basic_ack(delivery_tag = method.delivery_tag)
+    except Exception as e:
+        logger.error(f"Error processing message: {e}", exc_info=True)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
 
 def connect_with_broker(retries=30, delay_s=2):

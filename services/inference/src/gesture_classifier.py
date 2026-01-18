@@ -8,6 +8,10 @@ import cv2
 from pathlib import Path
 from typing import Tuple, Optional, Dict
 from config import settings
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class GestureClassifier:
@@ -20,6 +24,7 @@ class GestureClassifier:
 
     def __init__(self, model_path: Optional[str] = None):
         """Initialize classifier"""
+        logger.info("Initializing GestureClassifier")
         # ASL alphabet letters (subset for demonstration)
         self.gesture_labels = [
             'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
@@ -43,9 +48,14 @@ class GestureClassifier:
         # Try to load custom trained model if available
         if model_path is None:
             model_path = Path(settings.models_dir) / "asl_classifier.pkl"
+            logger.info(f"Using default model path: {model_path}")
 
+        logger.info(f"Checking for model at: {Path(model_path).resolve()}")
         if Path(model_path).exists():
+            logger.info(f"Model file found, loading...")
             self.load_model(model_path)
+        else:
+            logger.warning(f"Model file NOT found at {Path(model_path).resolve()}")
 
     def predict(self, features: np.ndarray, image: Optional[np.ndarray] = None) -> Tuple[str, float]:
         """
@@ -60,12 +70,15 @@ class GestureClassifier:
         """
         if self.model is not None:
             # Use custom trained model for prediction
+            logger.debug("Using trained ML model for prediction")
             return self._predict_with_model(features)
         elif self.gesture_recognizer is not None and image is not None:
             # Use MediaPipe gesture recognizer
+            logger.debug("Using MediaPipe gesture recognizer")
             return self._predict_with_mediapipe(image)
         else:
             # Use simple heuristic classifier as fallback
+            logger.warning("Using heuristic fallback classifier (no model loaded)")
             return self._predict_heuristic(features)
 
     def _load_mediapipe_model(self, model_path: str):
@@ -122,8 +135,10 @@ class GestureClassifier:
         # Preprocess features with scaler
         if self.scaler is not None:
             features_scaled = self.scaler.transform(features.reshape(1, -1))
+            logger.debug("Features scaled using loaded scaler")
         else:
             features_scaled = features.reshape(1, -1)
+            logger.debug("No scaler available, using raw features")
 
         # Predict
         prediction = self.model.predict(features_scaled)[0]
@@ -133,9 +148,12 @@ class GestureClassifier:
         # Decode label
         if self.label_encoder is not None:
             gesture = self.label_encoder.inverse_transform([prediction])[0]
+            logger.debug(f"Decoded prediction using label encoder")
         else:
             gesture = self.gesture_labels[prediction]
+            logger.debug(f"Using gesture_labels lookup")
 
+        logger.info(f"Model prediction: {gesture} (confidence: {confidence:.4f})")
         return gesture, float(confidence)
 
     def _predict_heuristic(self, features: np.ndarray) -> Tuple[str, float]:
@@ -233,14 +251,20 @@ class GestureClassifier:
         try:
             model_path = Path(model_path)
             model_dir = model_path.parent
+            
+            logger.info(f"Loading model from: {model_path.resolve()}")
 
             # Load model
             self.model = joblib.load(model_path)
+            logger.info(f"Model type: {type(self.model).__name__}")
 
             # Load scaler if exists
             scaler_path = model_dir / "scaler.pkl"
             if scaler_path.exists():
                 self.scaler = joblib.load(scaler_path)
+                logger.info(f"Scaler loaded from: {scaler_path}")
+            else:
+                logger.warning(f"Scaler not found at: {scaler_path}")
 
             # Load label encoder if exists
             encoder_path = model_dir / "label_encoder.pkl"
@@ -248,12 +272,15 @@ class GestureClassifier:
                 self.label_encoder = joblib.load(encoder_path)
                 # Update gesture labels from encoder
                 self.gesture_labels = list(self.label_encoder.classes_)
+                logger.info(f"Label encoder loaded. Gestures: {self.gesture_labels}")
+            else:
+                logger.warning(f"Label encoder not found at: {encoder_path}")
 
-            print(f"Model loaded successfully from {model_path}")
+            logger.info(f"✓ Model loaded successfully from {model_path}")
 
         except Exception as e:
-            print(f"Warning: Could not load model from {model_path}: {e}")
-            print("Falling back to heuristic-based classification")
+            logger.error(f"✗ Could not load model from {model_path}: {e}", exc_info=True)
+            logger.warning("Falling back to heuristic-based classification")
             self.model = None
 
     def is_confident(self, confidence: float) -> bool:

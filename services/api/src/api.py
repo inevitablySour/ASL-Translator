@@ -23,6 +23,18 @@ import base64
 import time
 import random
 import os
+import logging
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
+try:
+    from logging_setup import setup_logging
+    setup_logging()
+except ImportError:
+    logging.basicConfig(level=logging.DEBUG)
+    
+logger = logging.getLogger(__name__)
 # Get the queues from the compose files
 inference_queue = os.getenv("MODEL_QUEUE", "Letterbox")
 
@@ -100,33 +112,47 @@ async def predict_gesture(request: PredictionRequest):
     and then it structures it in a dictionary and then send it to the broker. Then we run the retrieve_job
     function from the consumer. Where we try to get the data back with the corresponding ID!
     '''
-    start_time = time.time() # Sets time to measure the taken time to predict.
-    global connection_producer; global connection_consumer # Get the global connections
-    # Create a job ID for the request so that we get the right answer back, instead of just pulling the first from the stack
+    start_time = time.time()
+    global connection_producer, connection_consumer
     job_id = create_ID()
-
-    payload = {"job_id": job_id, "image": request.image, "language": request.language}
-
-    # Send the message to the producer, who sends it to the broker
-    producer.send_message_broker(connection_producer, "inference_queue", payload)
-    print("- [API] DECODED IMAGE - SENT TO PRODUCER")
-
-    # Retrieve the data which needs to be in the PredictionResponse structure
-    data = consumer.retrieve_job(job_id)
-    print(f"- API   ::::: {data}")
-    predict_gesture = data[0]
-    confidence = data[1]
-    translation = data[2]
-    language = data[3]
-    proc_time = time.time() - start_time
-
-    return {
-        "job_id": job_id,
-        "gesture": predict_gesture,
-        'translation': translation,
-        'confidence': confidence,
-        'language': language,
-        'processing_time_ms': proc_time
-    }
+    
+    try:
+        logger.info(f"[JOB {job_id}] Received prediction request")
+        
+        payload = {"job_id": job_id, "image": request.image, "language": request.language}
+        
+        # Send the message to the producer
+        logger.info(f"[JOB {job_id}] Sending to inference queue")
+        producer.send_message_broker(connection_producer, "inference_queue", payload)
+        
+        # Retrieve the data
+        logger.info(f"[JOB {job_id}] Waiting for inference result...")
+        data = consumer.retrieve_job(job_id, timeout=10)
+        
+        if data is None:
+            logger.error(f"[JOB {job_id}] Failed to retrieve inference result")
+            raise HTTPException(status_code=500, detail="Failed to get inference result")
+        
+        predict_gesture = data[0]
+        confidence = data[1]
+        translation = data[2]
+        language = data[3]
+        proc_time = time.time() - start_time
+        
+        logger.info(f"[JOB {job_id}] Returning prediction: {predict_gesture} ({confidence:.4f})")
+        
+        return {
+            "job_id": job_id,
+            "gesture": predict_gesture,
+            'translation': translation,
+            'confidence': confidence,
+            'language': language,
+            'processing_time_ms': proc_time
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[JOB {job_id}] Error in prediction: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 

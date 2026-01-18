@@ -3,6 +3,9 @@ import time
 import json
 import random
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 '''
 This is the API CONSUMER file. The API here listens for messages that it gets on the API queues.
@@ -14,17 +17,31 @@ api_queue = os.getenv("API_QUEUE", "Letterbox")
 all_jobs = {}
 
 
-def retrieve_job(job_id):
+def retrieve_job(job_id, timeout=10):
     '''
     This returns the data from the corresponding job-id (used in the API to get the data)
+    Waits up to `timeout` seconds for the result
     '''
+    logger.info(f"Waiting for job {job_id}...")
+    start_time = time.time()
+    retry_count = 0
+    max_retries = int(timeout * 1000)  # 1ms sleep intervals
+    
     try:
-        for _ in range(100):
-            if job_id in all_jobs.keys():
-                return all_jobs[job_id]
+        while time.time() - start_time < timeout:
+            if job_id in all_jobs:
+                logger.info(f"Job {job_id} found after {retry_count} retries")
+                result = all_jobs[job_id]
+                del all_jobs[job_id]  # Clean up
+                return result
+            retry_count += 1
             time.sleep(0.001)
-    except:
-        print(" - [API_CONSUMER] Job not existing.")
+        
+        logger.error(f"Job {job_id} not found after {timeout}s timeout. Available jobs: {list(all_jobs.keys())}")
+        return None
+    except Exception as e:
+        logger.error(f"Error retrieving job {job_id}: {e}", exc_info=True)
+        return None
 
 def callback_function(ch, method, properties, body):
     '''
@@ -32,14 +49,19 @@ def callback_function(ch, method, properties, body):
     into a dictionary. And then add it to the all_jobs dictionary. The API it self will pull from this dictionary to
     get its result with the corresponding job-id.
     '''
-
-    data = json.loads(body.decode("utf-8"))
-    job_id = data["job_id"]
-    gesture = data["gesture"]
-    confidence = data["confidence"]
-    print('- [API-CONSUMER] ', data )
-    all_jobs.update({job_id: [gesture, confidence]})
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+    try:
+        data = json.loads(body.decode("utf-8"))
+        job_id = data["job_id"]
+        gesture = data["gesture"]
+        confidence = data["confidence"]
+        translation = data.get("translation", gesture)
+        language = data.get("language", "english")
+        logger.info(f'[API-CONSUMER] Received result for job {job_id}: gesture={gesture}, confidence={confidence}')
+        all_jobs[job_id] = [gesture, confidence, translation, language]
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+    except Exception as e:
+        logger.error(f"Error processing callback: {e}", exc_info=True)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
     
 def connect_with_broker(retries=30, delay_s=2):
@@ -80,4 +102,5 @@ def consume_message_inference(connection):
 def close_connection(connection):
     if connection and connection.is_open:
         connection.close()
+        logger.info("API Consumer connection closed")
         print("- [API] Connection closed!")
