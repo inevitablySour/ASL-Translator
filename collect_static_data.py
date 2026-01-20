@@ -71,15 +71,41 @@ class StaticGestureCollector:
             'samples_per_gesture': {}
         }
         
-        if self.data_dir.exists():
-            for gesture_dir in self.data_dir.iterdir():
-                if gesture_dir.is_dir():
-                    gesture_name = gesture_dir.name
-                    json_files = list(gesture_dir.glob("*.json"))
-                    count = len(json_files)
+        # Query database if available
+        if self.use_database:
+            try:
+                from sqlalchemy import func
+                session = get_session(self.db_engine)
+                
+                # Get count per gesture from database
+                results = session.query(
+                    TrainingSample.gesture,
+                    func.count(TrainingSample.id)
+                ).group_by(TrainingSample.gesture).all()
+                
+                for gesture_name, count in results:
                     info['gestures'].append(gesture_name)
                     info['samples_per_gesture'][gesture_name] = count
                     info['total_samples'] += count
+                
+                session.close()
+            except Exception as e:
+                print(f"Warning: Failed to query database: {e}")
+                print("Falling back to JSON file counts...")
+                # Fall through to file-based counting
+        
+        # Fallback to JSON files if database not available or query failed
+        if not self.use_database or info['total_samples'] == 0:
+            if self.data_dir.exists():
+                for gesture_dir in self.data_dir.iterdir():
+                    if gesture_dir.is_dir():
+                        gesture_name = gesture_dir.name
+                        json_files = list(gesture_dir.glob("*.json"))
+                        count = len(json_files)
+                        if gesture_name not in info['gestures']:
+                            info['gestures'].append(gesture_name)
+                        info['samples_per_gesture'][gesture_name] = count
+                        info['total_samples'] += count
         
         info['gestures'].sort()
         return info

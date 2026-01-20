@@ -32,4 +32,14 @@ wcwidth==0.2.14
 
 # Database sync dependencies
 sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Data collection dependencies
+mediapipe==0.10.14
+opencv-python==4.10.0.84
+numpy>=1.26.0,<2.0
+pydantic==2.12.5
+pydantic-settings==2.1.0
+python-dotenv>=0.21.0
 psycopg2==2.9.11
