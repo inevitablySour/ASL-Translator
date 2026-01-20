@@ -10,7 +10,7 @@ echo "Waiting for PostgreSQL to be ready..."
 sleep 5
 
 echo ""
-echo "🔍 Checking if database sync is needed..."
+echo "Checking if database sync is needed..."
 
 # Detect Python command - use active venv or find one
 if [ -n "$VIRTUAL_ENV" ]; then

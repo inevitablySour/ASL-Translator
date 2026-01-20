@@ -27,7 +27,7 @@ def check_kaggle_credentials():
     
     if not kaggle_json.exists():
         print("\n" + "=" * 60)
-        print("⚠️  Kaggle API credentials not found!")
+        print("Kaggle API credentials not found!")
         print("=" * 60)
         print("\nTo download datasets from Kaggle, you need to:")
         print("\n1. Create a Kaggle account at https://www.kaggle.com")

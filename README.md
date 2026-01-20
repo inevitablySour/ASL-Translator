@@ -81,7 +81,23 @@ Real-time American Sign Language (ASL) recognition system with continuous learni
    ```
 
 2. **Start all services**
+   
+   **macOS/Linux:**
    ```bash
+   ./docker-up.sh
+   # OR
+   docker-compose up -d
+   ```
+   
+   **Windows (PowerShell):**
+   ```powershell
+   # First, ensure Docker Desktop is running
+   # Then install required packages for database sync:
+   pip install sqlalchemy psycopg2-binary
+   
+   # Run the startup script
+   .\docker-up.ps1
+   # OR
    docker-compose up -d
    ```
 
@@ -91,7 +107,15 @@ Real-time American Sign Language (ASL) recognition system with continuous learni
    - RabbitMQ Management: http://localhost:15672 (guest/guest)
 
 4. **Check service status**
+   
+   **macOS/Linux:**
    ```bash
+   docker-compose ps
+   docker-compose logs -f api  # View API logs
+   ```
+   
+   **Windows:**
+   ```powershell
    docker-compose ps
    docker-compose logs -f api  # View API logs
    ```
@@ -117,9 +141,19 @@ On first run, the system automatically:
 ### Local Setup (without Docker)
 
 1. **Create virtual environment**
+   
+   **macOS/Linux:**
    ```bash
    python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   source .venv/bin/activate
+   ```
+   
+   **Windows (PowerShell):**
+   ```powershell
+   python -m venv .venv
+   .venv\Scripts\Activate.ps1
+   # OR if you get execution policy error:
+   .venv\Scripts\activate.bat
    ```
 
 2. **Install dependencies**
@@ -313,9 +347,58 @@ feedback_confidence_threshold = 0.9  # Min confidence to collect feedback
 
 ### Windows
 
-- Use Docker Desktop for Windows
-- WSL2 backend recommended
-- Camera access may require additional configuration
+**Prerequisites:**
+- Docker Desktop for Windows (with WSL2 backend recommended)
+- Python 3.10+ with virtual environment
+- PowerShell 5.1 or higher
+
+**Setup Steps:**
+
+1. **Install Docker Desktop**
+   - Download from https://www.docker.com/products/docker-desktop
+   - Enable WSL2 integration (Settings → Resources → WSL Integration)
+   - Ensure Docker Desktop is running before starting services
+
+2. **Set up Python environment**
+   ```powershell
+   # Navigate to project directory
+   cd C:\path\to\ASL-Translator
+   
+   # Create and activate virtual environment
+   python -m venv .venv
+   .venv\Scripts\Activate.ps1
+   
+   # Install database sync dependencies
+   pip install sqlalchemy psycopg2-binary
+   ```
+   
+   **Note:** If you get a PowerShell execution policy error when activating the venv, use:
+   ```powershell
+   .venv\Scripts\activate.bat
+   ```
+
+3. **Start the application**
+   ```powershell
+   # Using the PowerShell startup script (recommended)
+   .\docker-up.ps1
+   
+   # OR manually with docker-compose
+   docker-compose up -d
+   ```
+
+4. **Verify services are running**
+   ```powershell
+   docker-compose ps
+   ```
+
+**Camera Access:**
+- Allow camera access in browser settings (Chrome: Settings → Privacy and security → Camera)
+- Windows may prompt for camera permissions on first use
+
+**Common Issues:**
+- If Docker commands fail with "pipe/dockerDesktopLinuxEngine" error, ensure Docker Desktop is running
+- If bash scripts don't work, use the PowerShell equivalents (`.ps1` files)
+- For WSL issues, enable Docker integration: Docker Desktop → Settings → Resources → WSL Integration
 
 ## Troubleshooting
 
