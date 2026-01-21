@@ -1,0 +1,15 @@
+artifact_uri: file:///app/models/mlruns/787750003353791902/af84080017484d968ae9df29b7f9b619/artifacts
+end_time: 1768906984230
+entry_point_name: ''
+experiment_id: '787750003353791902'
+lifecycle_stage: active
+run_id: af84080017484d968ae9df29b7f9b619
+run_name: asl_model_20260120_110302
+run_uuid: af84080017484d968ae9df29b7f9b619
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1768906982631
+status: 3
+tags: []
+user_id: root
