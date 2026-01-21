@@ -32,7 +32,9 @@ jobs:
         run: |
           if [ -d "tests" ]; then
             pip install pytest
-            pytest tests/
+            # Add project root to PYTHONPATH so tests can import from services
+            export PYTHONPATH=$PYTHONPATH:$(pwd)
+            pytest tests/ -v
           else
             echo "No tests directory found, skipping pytest."
           fi
@@ -58,7 +60,7 @@ jobs:
           port: ${{ secrets.VM_SSH_PORT }}
           script: |
             set -e
-            cd /opt/asl-translator
+            cd /opt/asl-translator/ASL-Translator
             git pull
             # Stop and remove containers
             docker compose down
