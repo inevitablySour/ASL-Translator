@@ -97,3 +97,4 @@ jobs:
             docker compose -f docker-compose.yaml pull || true
             docker compose -f docker-compose.yaml up -d --build
 
+# test if the deployment works
