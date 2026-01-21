@@ -65,10 +65,30 @@ header p {
 
 main {
     padding: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+        "video results"
+        "feedback feedback"
+        "info info";
+    gap: 30px;
+    align-items: flex-start;
 }
 
 .video-section {
-    margin-bottom: 30px;
+    grid-area: video;
+}
+
+.results-section {
+    grid-area: results;
+}
+
+.feedback-prompt {
+    grid-area: feedback;
+}
+
+.info-section {
+    grid-area: info;
 }
 
 .video-container {
@@ -167,7 +187,6 @@ main {
     background: #f8f9fa;
     padding: 30px;
     border-radius: 10px;
-    margin-bottom: 30px;
 }
 
 .results-section h2 {
