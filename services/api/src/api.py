@@ -1,11 +1,15 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, Field
 from typing import Optional, List
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+import re
 import cv2
 import numpy as np
 import time
@@ -55,8 +59,81 @@ def create_ID():
 
 # Gets the data from web and convert it into this object
 class PredictionRequest(BaseModel):
-    image: str
-    model: Optional[str] = None
+    """Request model for gesture prediction with enhanced validation"""
+    image: str = Field(..., description="Base64-encoded image data")
+    model: Optional[str] = Field(None, description="Model version identifier")
+    
+    @field_validator('image')
+    @classmethod
+    def validate_image(cls, v: str) -> str:
+        """
+        Validate base64 image data
+        - Check format
+        - Enforce size limits
+        - Verify valid base64 encoding
+        """
+        if not v:
+            raise ValueError("Image data cannot be empty")
+        
+        # Check base64 format (may have data URI prefix)
+        base64_pattern = re.compile(r'^data:image/[a-zA-Z]+;base64,')
+        has_prefix = base64_pattern.match(v)
+        
+        # Extract base64 data (remove data URI prefix if present)
+        if has_prefix:
+            v = v.split(',', 1)[1]
+        
+        # Validate base64 encoding
+        try:
+            decoded = base64.b64decode(v, validate=True)
+        except Exception as e:
+            raise ValueError(f"Invalid base64 encoding: {str(e)}")
+        
+        # Size validation (5MB limit for decoded image)
+        MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+        if len(decoded) > MAX_IMAGE_SIZE:
+            raise ValueError(
+                f"Image size ({len(decoded)} bytes) exceeds maximum "
+                f"allowed size ({MAX_IMAGE_SIZE} bytes)"
+            )
+        
+        # Basic image format validation (check magic bytes)
+        if len(decoded) < 4:
+            raise ValueError("Image data too small to be valid")
+        
+        # Check for common image formats (JPEG, PNG)
+        if decoded[0:2] not in [b'\xff\xd8', b'\x89\x50']:  # JPEG or PNG
+            raise ValueError("Image must be in JPEG or PNG format")
+        
+        return v
+    
+    @field_validator('model')
+    @classmethod
+    def validate_model(cls, v: Optional[str]) -> Optional[str]:
+        """Validate model identifier format"""
+        if v is None:
+            return v
+        
+        # Allow alphanumeric, hyphens, underscores only
+        if not re.match(r'^[a-zA-Z0-9_-]+$', v):
+            raise ValueError(
+                "Model identifier contains invalid characters. "
+                "Only alphanumeric, hyphens, and underscores allowed."
+            )
+        
+        # Length limit
+        if len(v) > 100:
+            raise ValueError("Model identifier exceeds maximum length (100 characters)")
+        
+        return v
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
+                "model": "asl_model_20260120_110302"
+            }
+        }
 
 # How to retrieve the data back from the inference.
 class PredictionResponse(BaseModel):
@@ -70,9 +147,37 @@ class PredictionResponse(BaseModel):
 
 # Feedback request model
 class FeedbackRequest(BaseModel):
-    job_id: str
-    accepted: bool
-    corrected_gesture: Optional[str] = None
+    """Request model for user feedback with validation"""
+    job_id: str = Field(..., description="Prediction job ID")
+    accepted: bool = Field(..., description="Whether prediction was accepted")
+    corrected_gesture: Optional[str] = Field(None, description="Corrected gesture if rejected")
+    
+    @field_validator('job_id')
+    @classmethod
+    def validate_job_id(cls, v: str) -> str:
+        """Validate job ID format (UUID)"""
+        uuid_pattern = re.compile(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+            re.IGNORECASE
+        )
+        if not uuid_pattern.match(v):
+            raise ValueError("Invalid job ID format. Must be a valid UUID.")
+        return v
+    
+    @field_validator('corrected_gesture')
+    @classmethod
+    def validate_corrected_gesture(cls, v: Optional[str]) -> Optional[str]:
+        """Validate corrected gesture format"""
+        if v is None:
+            return v
+        
+        # Allow single uppercase letter (A-Z)
+        if not re.match(r'^[A-Z]$', v):
+            raise ValueError(
+                "Corrected gesture must be a single uppercase letter (A-Z)"
+            )
+        
+        return v
 
 
 connection_producer = None
@@ -87,6 +192,14 @@ def start_consuming(connection):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global connection_producer, connection_consumer, consumer_thread
+
+    # Check environment
+    environment = os.getenv("ENVIRONMENT", "development")
+    debug_mode = os.getenv("DEBUG", "false").lower() == "true"
+    
+    if environment == "production" and debug_mode:
+        logger.error("CRITICAL: Debug mode enabled in production!")
+        raise RuntimeError("Debug mode must be disabled in production")
 
     # Setup the connection with the producer and the consumer
     connection_producer = producer.connect_with_broker()
@@ -111,6 +224,73 @@ async def lifespan(app: FastAPI):
 # Set up the fastapi app
 app = FastAPI(lifespan=lifespan)
 
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Get rate limit configuration from environment
+RATE_LIMIT_PREDICT = os.getenv("RATE_LIMIT_PREDICT", "30/minute")
+RATE_LIMIT_FEEDBACK = os.getenv("RATE_LIMIT_FEEDBACK", "60/minute")
+RATE_LIMIT_STATS = os.getenv("RATE_LIMIT_STATS", "10/minute")
+RATE_LIMIT_ADMIN = os.getenv("RATE_LIMIT_ADMIN", "10/minute")
+
+# Configure CORS
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:8000"
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in allowed_origins],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
+    expose_headers=["X-Request-ID"],
+    max_age=3600,  # Cache preflight requests for 1 hour
+)
+
+# Import security modules
+try:
+    from security import verify_api_key, optional_api_key
+    from security_middleware import SecurityHeadersMiddleware
+    SECURITY_AVAILABLE = True
+except ImportError as e:
+    # Fallback if modules not available
+    logger.warning(f"Security modules not available: {e}")
+    # Create dummy functions that always fail
+    async def verify_api_key_dummy(request: Request, api_key: str = None):
+        raise HTTPException(status_code=503, detail="Security module not available")
+    verify_api_key = verify_api_key_dummy
+    optional_api_key = lambda request, api_key=None: None
+    SecurityHeadersMiddleware = None
+    SECURITY_AVAILABLE = False
+
+# Add security headers middleware
+if SecurityHeadersMiddleware:
+    app.add_middleware(SecurityHeadersMiddleware)
+
+# Request size limit middleware
+MAX_REQUEST_SIZE = 10 * 1024 * 1024  # 10MB
+
+@app.middleware("http")
+async def check_request_size(request: Request, call_next):
+    """Middleware to check request body size"""
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            size = int(content_length)
+            if size > MAX_REQUEST_SIZE:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Request body too large. Maximum size: {MAX_REQUEST_SIZE} bytes"
+                )
+        except ValueError:
+            pass  # Invalid content-length, let it through to be handled by FastAPI
+    
+    response = await call_next(request)
+    return response
 
 # Serve static files (css, js, images)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
@@ -133,7 +313,8 @@ def favicon():
 
 
 @app.post("/predict", response_model=PredictionResponse)
-async def predict_gesture(request: PredictionRequest):
+@limiter.limit(RATE_LIMIT_PREDICT)
+async def predict_gesture(request: Request, request_data: PredictionRequest):
     '''
     When the live prediction start, this functions gets called (on a loop). It gets the data from WEB
     and then it structures it in a dictionary and then send it to the broker. Then we run the retrieve_job
@@ -146,7 +327,7 @@ async def predict_gesture(request: PredictionRequest):
     try:
         logger.info(f"[JOB {job_id}] Received prediction request")
         
-        payload = {"job_id": job_id, "image": request.image, "model": request.model}
+        payload = {"job_id": job_id, "image": request_data.image, "model": request_data.model}
         
         # Send the message to the producer
         logger.info(f"[JOB {job_id}] Sending to inference queue")
@@ -201,7 +382,8 @@ async def predict_gesture(request: PredictionRequest):
 
 
 @app.post("/feedback")
-async def submit_feedback(request: FeedbackRequest):
+@limiter.limit(RATE_LIMIT_FEEDBACK)
+async def submit_feedback(request: Request, feedback_data: FeedbackRequest):
     """
     Submit user feedback for a prediction
     Only accepts feedback for predictions with landmarks (high confidence)
@@ -210,12 +392,12 @@ async def submit_feedback(request: FeedbackRequest):
         raise HTTPException(status_code=500, detail="Feedback system not available")
     
     try:
-        logger.info(f"Received feedback for job {request.job_id}: accepted={request.accepted}")
+        logger.info(f"Received feedback for job {feedback_data.job_id}: accepted={feedback_data.accepted}")
         
         result = feedback_manager.submit_feedback(
-            job_id=request.job_id,
-            accepted=request.accepted,
-            corrected_gesture=request.corrected_gesture
+            job_id=feedback_data.job_id,
+            accepted=feedback_data.accepted,
+            corrected_gesture=feedback_data.corrected_gesture
         )
         
         if not result["success"]:
@@ -264,7 +446,11 @@ def dashboard():
 
 
 @app.get("/api/stats")
-async def get_production_stats():
+@limiter.limit(RATE_LIMIT_STATS)
+async def get_production_stats(
+    request: Request,
+    api_key: str = Depends(optional_api_key)
+):
     """
     Get production performance statistics from database
     """
@@ -390,7 +576,12 @@ async def get_training_history():
 
 
 @app.post("/api/models/{model_id}/activate")
-async def activate_model(model_id: str):
+@limiter.limit(RATE_LIMIT_ADMIN)
+async def activate_model(
+    request: Request,
+    model_id: str,
+    api_key: str = Depends(verify_api_key)
+):
     """
     Activate a specific model for inference and restart the inference service
     """
