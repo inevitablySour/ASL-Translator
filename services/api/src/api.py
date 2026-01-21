@@ -79,6 +79,16 @@ connection_producer = None
 connection_consumer = None
 consumer_thread = None
 
+
+def get_producer_connection():
+    """Get a live RabbitMQ producer connection, reconnecting if needed."""
+    global connection_producer
+    if connection_producer is None or not getattr(connection_producer, "is_open", False):
+        logger.warning("[API] Producer connection closed or missing; reconnecting to RabbitMQ")
+        connection_producer = producer.connect_with_broker()
+    return connection_producer
+
+
 # Start consuming!!
 def start_consuming(connection):
     consumer.consume_message_inference(connection)
@@ -148,9 +158,18 @@ async def predict_gesture(request: PredictionRequest):
         
         payload = {"job_id": job_id, "image": request.image, "model": request.model}
         
+        # Ensure we have a live RabbitMQ connection for the producer
+        conn = get_producer_connection()
+        
         # Send the message to the producer
         logger.info(f"[JOB {job_id}] Sending to inference queue")
-        producer.send_message_broker(connection_producer, "inference_queue", payload)
+        try:
+            producer.send_message_broker(conn, "inference_queue", payload)
+        except Exception as e:
+            # If the channel/connection was closed mid‑request, reconnect once and retry
+            logger.warning(f"[JOB {job_id}] Producer send failed ({e}); reconnecting and retrying once")
+            conn = get_producer_connection()
+            producer.send_message_broker(conn, "inference_queue", payload)
         
         # Retrieve the data
         logger.info(f"[JOB {job_id}] Waiting for inference result...")
