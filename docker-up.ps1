@@ -35,9 +35,7 @@ if ($env:VIRTUAL_ENV) {
 Write-Host "Running check_and_sync.py..." -ForegroundColor Cyan
 & $PYTHON_CMD check_and_sync.py
 if ($LASTEXITCODE -eq 0) {
-    Write-Host ""
-    Write-Host "Database is already up-to-date" -ForegroundColor Green
-} else {
+    # 0 = sync needed
     Write-Host ""
     Write-Host "Syncing SQLite to PostgreSQL..." -ForegroundColor Yellow
     & $PYTHON_CMD migrate_to_postgres.py
@@ -46,6 +44,10 @@ if ($LASTEXITCODE -eq 0) {
     } else {
         Write-Host "Sync failed, but containers are running" -ForegroundColor Red
     }
+} else {
+    # non-zero = no sync needed
+    Write-Host ""
+    Write-Host "Database is already up-to-date" -ForegroundColor Green
 }
 
 Write-Host ""

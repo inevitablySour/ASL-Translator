@@ -120,11 +120,15 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 def home():
     return FileResponse(BASE_DIR / "static" / "index.html")
 
-# Handle favicon requests to prevent 404 errors
-@app.get("/favicon.ico")
+# Handle favicon requests
+@app.get("/favicon.ico", include_in_schema=False)
 def favicon():
-    # Return 204 No Content (browsers will use default)
+    """Serve favicon from static directory if available"""
     from fastapi import Response
+    favicon_path = BASE_DIR / "static" / "favicon.svg"
+    if favicon_path.exists():
+        return FileResponse(favicon_path, media_type="image/svg+xml")
+    # Fallback: no content so browser uses default
     return Response(status_code=204)
 
 

@@ -113,7 +113,7 @@ class EnhancedFeatureExtractor:
             landmarks: Array of shape (21, 3) representing hand landmarks
         
         Returns:
-            List of orientation features (16 features)
+            List of orientation features (15 features)
         """
         features = []
         
@@ -138,12 +138,12 @@ class EnhancedFeatureExtractor:
         tilt_angles = self._compute_tilt_angles(landmarks)
         features.extend(tilt_angles)
         
-        # 5. Finger spread angles (4 features)
+        # 5. Finger spread angles (3 features)
         # Angle between adjacent fingers
         spread_angles = self._compute_finger_spread(landmarks)
         features.extend(spread_angles)
         
-        # Total: 3 + 3 + 3 + 3 + 4 = 16 orientation features
+        # Total: 3 + 3 + 3 + 3 + 3 = 15 orientation features
         return features
     
     def _compute_palm_normal(self, landmarks: np.ndarray) -> np.ndarray:
@@ -262,7 +262,7 @@ class EnhancedFeatureExtractor:
     def get_feature_count(self) -> int:
         """Get total number of features"""
         base_features = 63  # 21 landmarks × 3 coordinates
-        orientation_features = 16 if self.include_orientation else 0
+        orientation_features = 15 if self.include_orientation else 0
         return base_features + orientation_features
     
     def get_feature_names(self) -> List[str]:
@@ -288,6 +288,6 @@ class EnhancedFeatureExtractor:
             names.extend(['middle_dir_x', 'middle_dir_y', 'middle_dir_z'])
             names.extend(['pitch', 'yaw', 'roll'])
             names.extend(['spread_index_middle', 'spread_middle_ring', 
-                         'spread_ring_pinky', 'spread_pinky_thumb'])
+                         'spread_ring_pinky'])
         
         return names
