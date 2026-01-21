@@ -44,3 +44,9 @@ pydantic-settings==2.1.0
 python-dotenv>=0.21.0
 psycopg2==2.9.11
 scikit-learn==1.8.0
+
+# pytest for CT
+pytest==8.3.4
+
+# you forgot mlflow
+mlflow==2.21.1
