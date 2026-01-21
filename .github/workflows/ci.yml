@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ASL-Translator dependencies
+        working-directory: ASL-Translator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run basic Python checks (syntax / import)
+        working-directory: ASL-Translator
+        run: |
+          python -m compileall .
+
+      - name: Run tests if present
+        working-directory: ASL-Translator
+        run: |
+          if [ -d "tests" ]; then
+            pip install pytest
+            pytest
+          else
+            echo "No tests directory found, skipping pytest."
+          fi
+
+      - name: Build Docker services
+        working-directory: ASL-Translator
+        run: |
+          docker compose -f docker-compose.yaml config
+          docker compose -f docker-compose.yaml build
+
