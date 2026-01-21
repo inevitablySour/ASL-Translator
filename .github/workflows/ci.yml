@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ASL-Translator/requirements.txt
+
+      - name: Run basic Python checks
+        run: |
+          python -m compileall ASL-Translator
+
+      - name: Run tests if present
+        run: |
+          if [ -d "ASL-Translator/tests" ]; then
+            pip install pytest
+            pytest ASL-Translator/tests/
+          else
+            echo "No tests directory found, skipping pytest."
+          fi
+
+      - name: Build Docker services
+        run: |
+          docker compose -f ASL-Translator/docker-compose.yaml config
+          docker compose -f ASL-Translator/docker-compose.yaml build
+
+  deploy:
+    name: Deploy to Docker VM
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Deploy via SSH to VM
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT }}
+          script: |
+            set -e
+            cd /opt/asl-translator
+            git pull
+            docker compose -f docker-compose.yaml pull || true
+            docker compose -f docker-compose.yaml up -d --build
