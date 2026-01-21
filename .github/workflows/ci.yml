@@ -46,3 +46,54 @@ jobs:
           docker compose -f docker-compose.yaml config
           docker compose -f docker-compose.yaml build
 
+  deploy:
+    name: Deploy to Docker VM
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    # Only deploy on direct pushes to the main branch (not on PRs)
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy via SSH to VM
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT }}
+          script: |
+            set -e
+            # Go to the app directory on the VM (adjust if you use a different path)
+            cd /opt/asl-translator
+            # Pull latest code
+            git pull
+            # Rebuild and restart services
+            docker compose -f docker-compose.yaml pull || true
+            docker compose -f docker-compose.yaml up -d --build
+
+
+  deploy:
+    name: Deploy to Docker VM
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    # Only deploy on direct pushes to the main branch (not on PRs)
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy via SSH to VM
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT }}
+          script: |
+            set -e
+            # Go to the app directory on the VM (adjust if you use a different path)
+            cd /opt/asl-translator
+            # Pull latest code
+            git pull
+            # Rebuild and restart services
+            docker compose -f docker-compose.yaml pull || true
+            docker compose -f docker-compose.yaml up -d --build
+
