@@ -66,7 +66,8 @@ header p {
 main {
     padding: 40px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* Make video column slightly wider than results */
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     grid-template-areas:
         "video results"
         "feedback feedback"
@@ -97,7 +98,8 @@ main {
     overflow: hidden;
     margin-bottom: 20px;
     position: relative;
-    padding-top: 56.25%; /* 16:9 aspect ratio */
+    /* Slightly reduce height so results are more likely to be visible without scrolling */
+    padding-top: 50%; /* ~16:9 but a bit shorter */
 }
 
 #webcam {
@@ -290,8 +292,15 @@ footer {
         font-size: 2rem;
     }
     
+    /* Stack sections on small screens for readability */
     main {
         padding: 20px;
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "video"
+            "results"
+            "feedback"
+            "info";
     }
     
     .controls {

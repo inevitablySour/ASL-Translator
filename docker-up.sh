@@ -7,7 +7,26 @@ docker-compose up -d postgres
 
 echo ""
 echo "Waiting for PostgreSQL to be ready..."
-sleep 5
+
+# Wait for PostgreSQL to be actually ready (not just container started)
+max_attempts=30
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+    if docker exec asl_postgres pg_isready -U asl_user -d asl_translator > /dev/null 2>&1; then
+        echo "PostgreSQL is ready!"
+        # Give it a bit more time to fully initialize
+        sleep 2
+        break
+    fi
+    attempt=$((attempt + 1))
+    echo "Waiting for PostgreSQL... (attempt $attempt/$max_attempts)"
+    sleep 1
+done
+
+if [ $attempt -eq $max_attempts ]; then
+    echo "Warning: PostgreSQL readiness check timed out after ${max_attempts} seconds"
+    echo "Continuing anyway..."
+fi
 
 echo ""
 echo "Checking if database sync is needed..."
@@ -46,7 +65,7 @@ fi
 
 echo ""
 echo "Starting remaining services..."
-docker-compose up -d"$@"
+docker-compose up -d "$@"
 
 echo ""
 echo "All services are running!"

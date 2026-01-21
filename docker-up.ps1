@@ -5,7 +5,31 @@ docker-compose up -d postgres
 
 Write-Host ""
 Write-Host "Waiting for PostgreSQL to be ready..." -ForegroundColor Yellow
-Start-Sleep -Seconds 5
+
+# Wait for PostgreSQL to be actually ready (not just container started)
+$maxAttempts = 30
+$attempt = 0
+while ($attempt -lt $maxAttempts) {
+    try {
+        docker exec asl_postgres pg_isready -U asl_user -d asl_translator | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "PostgreSQL is ready!" -ForegroundColor Green
+            # Give it a bit more time to fully initialize
+            Start-Sleep -Seconds 2
+            break
+        }
+    } catch {
+        # Ignore errors and keep trying
+    }
+    $attempt++
+    Write-Host "Waiting for PostgreSQL... (attempt $attempt/$maxAttempts)" -ForegroundColor Yellow
+    Start-Sleep -Seconds 1
+}
+
+if ($attempt -eq $maxAttempts) {
+    Write-Host "Warning: PostgreSQL readiness check timed out after $maxAttempts seconds" -ForegroundColor Yellow
+    Write-Host "Continuing anyway..." -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "Checking if database sync is needed..." -ForegroundColor Yellow
@@ -25,9 +49,14 @@ if ($env:VIRTUAL_ENV) {
         python -c "import sqlalchemy, psycopg2" 2>$null
         $PYTHON_CMD = "python"
     } catch {
-        Write-Host "⚠️  Cannot find Python with sqlalchemy and psycopg2 installed" -ForegroundColor Yellow
-        Write-Host "   Install with: pip install sqlalchemy psycopg2-binary" -ForegroundColor Yellow
-        $PYTHON_CMD = "python"
+        try {
+            python3 -c "import sqlalchemy, psycopg2" 2>$null
+            $PYTHON_CMD = "python3"
+        } catch {
+            Write-Host "⚠️  Cannot find Python with sqlalchemy and psycopg2 installed" -ForegroundColor Yellow
+            Write-Host "   Install with: pip install sqlalchemy psycopg2-binary" -ForegroundColor Yellow
+            $PYTHON_CMD = "python3"
+        }
     }
 }
 

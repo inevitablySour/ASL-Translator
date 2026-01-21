@@ -8,8 +8,9 @@ from pathlib import Path
 # Add API source to path
 sys.path.insert(0, str(Path(__file__).parent / 'services' / 'api' / 'src'))
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.dialects.postgresql import insert
 from database import Base, User, Model, Prediction, Feedback, TrainingSample, TrainingRun
 import os
 
@@ -70,42 +71,59 @@ def migrate_data():
         
         print(f"  Found {count} records")
         
-        # Bulk insert into PostgreSQL
+        # Upsert records into PostgreSQL (insert or update on conflict)
         migrated = 0
+        updated = 0
         failed = 0
         
-        for record in records:
+        # Get primary key columns for the table
+        pk_columns = [key.name for key in inspect(table_class).primary_key]
+        
+        # Process in batches
+        batch_size = 100
+        for i in range(0, count, batch_size):
+            batch = records[i:i + batch_size]
+            
             try:
-                # Convert SQLAlchemy object to dict
-                record_dict = {}
-                for column in table_class.__table__.columns:
-                    record_dict[column.name] = getattr(record, column.name)
+                for record in batch:
+                    # Convert SQLAlchemy object to dict
+                    record_dict = {}
+                    for column in table_class.__table__.columns:
+                        record_dict[column.name] = getattr(record, column.name)
+                    
+                    # Use PostgreSQL INSERT ... ON CONFLICT DO UPDATE (upsert)
+                    stmt = insert(table_class.__table__).values(record_dict)
+                    
+                    # Create update dict excluding primary keys
+                    update_dict = {k: v for k, v in record_dict.items() if k not in pk_columns}
+                    
+                    if update_dict:
+                        # Update all columns except primary keys on conflict
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=pk_columns,
+                            set_=update_dict
+                        )
+                    else:
+                        # If only primary keys exist, do nothing on conflict
+                        stmt = stmt.on_conflict_do_nothing(index_elements=pk_columns)
+                    
+                    postgres_session.execute(stmt)
                 
-                # Create new object for PostgreSQL
-                new_record = table_class(**record_dict)
-                postgres_session.add(new_record)
-                migrated += 1
-                
-                # Commit in batches
-                if migrated % 100 == 0:
-                    postgres_session.commit()
-                    print(f"  Migrated {migrated}/{count}...", end='\r')
+                # Commit batch
+                postgres_session.commit()
+                batch_migrated = len(batch)
+                migrated += batch_migrated
+                print(f"  Migrated {migrated}/{count}...", end='\r')
             
             except Exception as e:
-                failed += 1
-                print(f"\n  Error migrating record: {e}")
+                failed += len(batch)
+                print(f"\n  Error migrating batch: {e}")
                 postgres_session.rollback()
         
-        # Final commit
-        try:
-            postgres_session.commit()
-            print(f"  ✓ Successfully migrated {migrated} records")
-            if failed > 0:
-                print(f"  ✗ Failed to migrate {failed} records")
-            total_migrated += migrated
-        except Exception as e:
-            print(f"  ✗ Error committing batch: {e}")
-            postgres_session.rollback()
+        print(f"\n  ✓ Successfully migrated/updated {migrated} records")
+        if failed > 0:
+            print(f"  ✗ Failed to migrate {failed} records")
+        total_migrated += migrated
     
     # Close connections
     sqlite_session.close()

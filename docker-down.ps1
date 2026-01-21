@@ -21,9 +21,14 @@ if ($postgresRunning) {
             python -c "import sqlalchemy, psycopg2" 2>$null
             $PYTHON_CMD = "python"
         } catch {
-            Write-Host "⚠️  Cannot find Python with sqlalchemy and psycopg2 installed" -ForegroundColor Yellow
-            Write-Host "   Install with: pip install sqlalchemy psycopg2-binary" -ForegroundColor Yellow
-            $PYTHON_CMD = "python"
+            try {
+                python3 -c "import sqlalchemy, psycopg2" 2>$null
+                $PYTHON_CMD = "python3"
+            } catch {
+                Write-Host "Cannot find Python with sqlalchemy and psycopg2 installed" -ForegroundColor Yellow
+                Write-Host "   Install with: pip install sqlalchemy psycopg2-binary" -ForegroundColor Yellow
+                $PYTHON_CMD = "python3"
+            }
         }
     }
     
