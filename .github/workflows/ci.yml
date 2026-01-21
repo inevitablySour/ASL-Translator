@@ -22,25 +22,25 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r ASL-Translator/requirements.txt
+          pip install -r requirements.txt
 
       - name: Run basic Python checks
         run: |
-          python -m compileall ASL-Translator
+          python -m compileall .
 
       - name: Run tests if present
         run: |
-          if [ -d "ASL-Translator/tests" ]; then
+          if [ -d "tests" ]; then
             pip install pytest
-            pytest ASL-Translator/tests/
+            pytest tests/
           else
             echo "No tests directory found, skipping pytest."
           fi
 
       - name: Build Docker services
         run: |
-          docker compose -f ASL-Translator/docker-compose.yaml config
-          docker compose -f ASL-Translator/docker-compose.yaml build
+          docker compose -f docker-compose.yaml config
+          docker compose -f docker-compose.yaml build
 
   deploy:
     name: Deploy to Docker VM
@@ -60,5 +60,9 @@ jobs:
             set -e
             cd /opt/asl-translator
             git pull
-            docker compose -f docker-compose.yaml pull || true
-            docker compose -f docker-compose.yaml up -d --build
+            # Stop and remove containers
+            docker compose down
+            # Pull latest images
+            docker compose pull || true
+            # Rebuild and start services
+            docker compose up -d --build
