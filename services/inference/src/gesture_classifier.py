@@ -37,6 +37,7 @@ class GestureClassifier:
         self.scaler = None
         self.label_encoder = None
         self.gesture_recognizer = None
+        self.expected_features = 63  # Default to 63, updated after model load
 
         # Try to load MediaPipe gesture recognizer
         # Note: MediaPipe's pre-trained model is for general gestures, not ASL alphabet
@@ -260,6 +261,14 @@ class GestureClassifier:
             # Load model
             self.model = joblib.load(model_path)
             logger.info(f"Model type: {type(self.model).__name__}")
+            
+            # Detect expected feature count from model
+            if hasattr(self.model, 'n_features_in_'):
+                self.expected_features = self.model.n_features_in_
+                logger.info(f"Model expects {self.expected_features} features")
+            else:
+                logger.warning("Could not detect feature count from model, using default (63)")
+                self.expected_features = 63
 
             # Load scaler if exists
             scaler_path = model_dir / "scaler.pkl"

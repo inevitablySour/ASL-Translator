@@ -88,6 +88,25 @@ class HandDetector:
 
         return np.array(features, dtype=np.float32)
 
+    def extract_features_enhanced(self, hand_landmarks: dict) -> np.ndarray:
+        """
+        Extract enhanced features using EnhancedFeatureExtractor (79 features)
+        Includes orientation, scale-invariance, and directional features
+        
+        Args:
+            hand_landmarks: Dictionary containing landmark coordinates
+        
+        Returns:
+            Feature vector as numpy array (79 features)
+        """
+        try:
+            from feature_extractor import EnhancedFeatureExtractor
+            extractor = EnhancedFeatureExtractor(include_orientation=True)
+            return extractor.extract_features(hand_landmarks)
+        except ImportError:
+            # Fallback to basic features if EnhancedFeatureExtractor not available
+            return self.extract_features(hand_landmarks)
+    
     def normalize_landmarks(self, landmarks: np.ndarray) -> np.ndarray:
         """
         Normalize landmarks relative to wrist position (landmark 0)

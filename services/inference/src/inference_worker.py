@@ -13,6 +13,17 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# Initialize classifier once globally
+_classifier = None
+
+def get_classifier():
+    """Get or initialize the gesture classifier (singleton pattern)"""
+    global _classifier
+    if _classifier is None:
+        logger.info("Initializing gesture classifier (first time)...")
+        _classifier = GestureClassifier()
+    return _classifier
+
 
 def base64_to_bgr(base64_str: str) -> np.ndarray:
     """
@@ -47,6 +58,9 @@ def predict_gesture_from_base64(base64_image: str, language: str = "english") ->
         raise
 
     # 2. Detect hand + landmarks
+    # 3. Get classifier (initialized once, reused across predictions)
+    classifier = get_classifier()
+    
     with HandDetector() as detector:
         _, hands = detector.detect_hands(image)
         logger.info(f"Hand detection complete. Hands found: {len(hands)}")
@@ -62,19 +76,25 @@ def predict_gesture_from_base64(base64_image: str, language: str = "english") ->
             }
 
         hand = hands[0]
-        features = detector.extract_features(hand)
+        
+        # Use enhanced features if model expects 78, otherwise use basic 63
+        if classifier.expected_features == 78:
+            logger.debug("Extracting enhanced features (78)")
+            features = detector.extract_features_enhanced(hand)
+        else:
+            logger.debug("Extracting basic features (63)")
+            features = detector.extract_features(hand)
+        
         logger.debug(f"Features extracted. Shape: {features.shape}")
 
-    # 3. Predict gesture
-    logger.info("Initializing gesture classifier...")
-    classifier = GestureClassifier()
+    # 4. Predict gesture
     prediction = classifier.predict(features, image=image)
 
     # ✅ handle tuple output
     label, conf = prediction[0], prediction[1]
     logger.info(f"Prediction: {label} with confidence {conf:.4f}")
 
-    # 4. Translate gesture
+    # 5. Translate gesture
     translator = Translator()
     translation = translator.translate(label, language)
     logger.info(f"Translation: {label} -> {translation}")

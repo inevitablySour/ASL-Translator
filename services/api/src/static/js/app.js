@@ -9,7 +9,7 @@ const PREDICTION_RATE = 500; // Predict every 500ms
 let feedbackCandidates = []; // Store high-confidence predictions during live detection
 
 // DOM elements (initialized after DOM loads)
-let webcam, canvas, startBtn, stopBtn, toggleLiveBtn, modelSelect, resultsDiv, predictionDiv;
+let webcam, canvas, startBtn, stopBtn, toggleLiveBtn, resultsDiv, predictionDiv, activeModelDisplay;
 let feedbackPrompt, feedbackYesBtn, feedbackNoBtn, feedbackSummary;
 let currentJobId = null;
 let currentLandmarks = null;
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startBtn = document.getElementById('startBtn');
     stopBtn = document.getElementById('stopBtn');
     toggleLiveBtn = document.getElementById('toggleLiveBtn');
-    modelSelect = document.getElementById('model');
+    activeModelDisplay = document.getElementById('activeModel');
     resultsDiv = document.getElementById('results');
     predictionDiv = document.getElementById('prediction');
     feedbackPrompt = document.getElementById('feedbackPrompt');
@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     feedbackYesBtn.addEventListener('click', () => submitFeedback(true));
     feedbackNoBtn.addEventListener('click', () => submitFeedback(false));
     
-    // Load available models
-    loadModels();
+    // Load and display active model
+    loadActiveModel();
 });
 
 // Start camera when the button gets pressed.
@@ -121,11 +121,12 @@ function stopLiveDetection() {
         predictionInterval = null;
     }
     
-    showMessage('Live detection stopped.', 'info');
-    
     // Show feedback prompt if we have high-confidence predictions
     if (feedbackCandidates.length > 0) {
+        console.log('Stopping live detection, showing feedback for', feedbackCandidates.length, 'samples');
         showFeedbackSummary();
+    } else {
+        showMessage('Live detection stopped.', 'info');
     }
 }
 
@@ -145,10 +146,7 @@ async function captureAndPredict() {
         // Convert to base64 so that it can be used by mediapipe and get send through the broker.
         const imageData = canvas.toDataURL('image/jpeg');
         
-        // Get selected model
-        const selectedModel = modelSelect.value;
-        
-        // Send the converted image to the API
+        // Send the converted image to the API (model is always null, active model used)
         const response = await fetch('/predict', {
             method: 'POST',
             headers: {
@@ -156,7 +154,7 @@ async function captureAndPredict() {
             },
             body: JSON.stringify({
                 image: imageData,
-                model: selectedModel
+                model: null
             })
         });
         
@@ -227,7 +225,10 @@ function displayResults(result) {
     document.getElementById('processingTime').textContent = `${result.processing_time_ms.toFixed(2)} ms`;
     
     // Don't show feedback prompt during live detection - we'll show it after stopping
-    feedbackPrompt.style.display = 'none';
+    // Only hide if we're actually in live detection mode
+    if (isLiveDetection) {
+        feedbackPrompt.style.display = 'none';
+    }
     
     // Only show success message if not in live mode
     if (!isLiveDetection) {
@@ -237,6 +238,8 @@ function displayResults(result) {
 
 // Show feedback summary after stopping live detection
 function showFeedbackSummary() {
+    console.log('showFeedbackSummary called with', feedbackCandidates.length, 'candidates');
+    
     // Group by gesture and count
     const gestureGroups = {};
     feedbackCandidates.forEach(candidate => {
@@ -260,7 +263,16 @@ function showFeedbackSummary() {
     summaryHTML += `<p class="total-samples">Total: <strong>${feedbackCandidates.length} samples</strong></p>`;
     
     feedbackSummary.innerHTML = summaryHTML;
+    
+    // Hide placeholder to avoid conflicts
+    const placeholder = resultsDiv.querySelector('.placeholder');
+    if (placeholder) {
+        placeholder.style.display = 'none';
+    }
+    
     feedbackPrompt.style.display = 'block';
+    console.log('Feedback prompt display set to block, current style:', feedbackPrompt.style.display);
+    console.log('Feedback prompt computed display:', window.getComputedStyle(feedbackPrompt).display);
 }
 
 // Submit feedback for all collected samples
@@ -306,47 +318,28 @@ async function submitFeedback(accepted) {
     }
 }
 
-// Load available models from API
-async function loadModels() {
+// Load and display active model
+async function loadActiveModel() {
     try {
         const response = await fetch('/api/models');
         const data = await response.json();
         
-        modelSelect.innerHTML = '';
+        // Find active model
+        const activeModel = data.models.find(m => m.is_active);
         
-        if (data.models.length === 0) {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'No models available';
-            modelSelect.appendChild(option);
-            modelSelect.disabled = true;
-            return;
-        }
-        
-        // Add models to select
-        data.models.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.version;
-            const accuracy = model.accuracy ? `(${(model.accuracy * 100).toFixed(1)}%)` : '';
-            option.textContent = `${model.version} ${accuracy}`;
-            
-            // Select active model by default
-            if (model.is_active) {
-                option.selected = true;
-            }
-            
-            modelSelect.appendChild(option);
-        });
-        
-        // If no active model, select the first one
-        if (!data.models.some(m => m.is_active) && modelSelect.options.length > 0) {
-            modelSelect.selectedIndex = 0;
+        if (activeModel) {
+            const accuracy = activeModel.accuracy ? ` (${(activeModel.accuracy * 100).toFixed(1)}% accuracy)` : '';
+            activeModelDisplay.textContent = `${activeModel.version}${accuracy}`;
+            activeModelDisplay.style.color = '#28a745';
+        } else {
+            activeModelDisplay.textContent = 'No active model';
+            activeModelDisplay.style.color = '#dc3545';
         }
         
     } catch (error) {
-        console.error('Error loading models:', error);
-        modelSelect.innerHTML = '<option value="">Error loading models</option>';
-        modelSelect.disabled = true;
+        console.error('Error loading active model:', error);
+        activeModelDisplay.textContent = 'Error loading model';
+        activeModelDisplay.style.color = '#dc3545';
     }
 }
 

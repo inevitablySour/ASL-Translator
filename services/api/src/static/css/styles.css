@@ -138,24 +138,29 @@ main {
     color: #212529;
 }
 
-.model-selector {
+.model-info {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 20px;
-}
-
-.model-selector label {
-    font-weight: 600;
-}
-
-.model-selector select {
-    padding: 8px 16px;
-    border: 2px solid #667eea;
+    margin-top: 15px;
+    padding: 12px;
+    background: #f8f9fa;
     border-radius: 8px;
-    font-size: 1rem;
-    cursor: pointer;
+}
+
+.model-info label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.model-display {
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
 }
 
 .results-section {

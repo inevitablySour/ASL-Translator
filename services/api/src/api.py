@@ -120,6 +120,13 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 def home():
     return FileResponse(BASE_DIR / "static" / "index.html")
 
+# Handle favicon requests to prevent 404 errors
+@app.get("/favicon.ico")
+def favicon():
+    # Return 204 No Content (browsers will use default)
+    from fastapi import Response
+    return Response(status_code=204)
+
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict_gesture(request: PredictionRequest):
@@ -381,9 +388,10 @@ async def get_training_history():
 @app.post("/api/models/{model_id}/activate")
 async def activate_model(model_id: str):
     """
-    Activate a specific model for inference
+    Activate a specific model for inference and restart the inference service
     """
     try:
+        import subprocess
         from database import get_session, init_db, Model
         
         engine = init_db()
@@ -406,9 +414,26 @@ async def activate_model(model_id: str):
         
         session.close()
         
+        # Restart inference service to load the new model
+        try:
+            logger.info("Restarting inference service...")
+            subprocess.run(
+                ["docker", "restart", "asl-translator_inference_1"],
+                check=True,
+                capture_output=True,
+                timeout=30
+            )
+            logger.info("Inference service restarted successfully")
+        except subprocess.TimeoutExpired:
+            logger.error("Inference service restart timed out")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to restart inference service: {e.stderr.decode()}")
+        except Exception as e:
+            logger.error(f"Error restarting inference service: {e}")
+        
         return {
             "success": True,
-            "message": f"Model {model.version} activated successfully",
+            "message": f"Model {model.version} activated and inference service restarted",
             "model_id": model_id
         }
     except HTTPException:

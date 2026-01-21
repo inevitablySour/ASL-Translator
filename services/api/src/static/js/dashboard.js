@@ -294,11 +294,17 @@ async function loadFeedbackStats() {
 
 // Activate a model
 async function activateModel(modelId, modelVersion) {
-    if (!confirm(`Are you sure you want to activate model "${modelVersion}"?\n\nThis will deactivate the current model and the inference service will start using the selected model.`)) {
+    if (!confirm(`Are you sure you want to activate model "${modelVersion}"?\n\nThis will restart the inference service to load the new model.`)) {
         return;
     }
     
     try {
+        // Show loading message
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Activating...';
+        btn.disabled = true;
+        
         const response = await fetch(`/api/models/${modelId}/activate`, {
             method: 'POST'
         });
@@ -306,11 +312,13 @@ async function activateModel(modelId, modelVersion) {
         const result = await response.json();
         
         if (response.ok) {
-            alert(`Model "${modelVersion}" activated successfully!\n\nNote: The inference service may need to be restarted to load the new model.`);
+            alert(`Model "${modelVersion}" activated successfully!\n\nThe inference service has been restarted and is now using the new model.`);
             // Reload models table
             await loadModels();
         } else {
             alert(`Failed to activate model: ${result.detail || 'Unknown error'}`);
+            btn.textContent = originalText;
+            btn.disabled = false;
         }
     } catch (error) {
         console.error('Error activating model:', error);

@@ -26,7 +26,7 @@ elif command -v python3 &> /dev/null && python3 -c "import sqlalchemy, psycopg2"
     # System python3 with required packages
     PYTHON_CMD="python3"
 else
-    echo "⚠️  Cannot find Python with sqlalchemy and psycopg2 installed"
+    echo "Cannot find Python with sqlalchemy and psycopg2 installed"
     echo "   Install with: pip install sqlalchemy psycopg2-binary"
     PYTHON_CMD="python3"
 fi
@@ -46,7 +46,7 @@ fi
 
 echo ""
 echo "Starting remaining services..."
-docker-compose up -d "$@"
+docker-compose up -d"$@"
 
 echo ""
 echo "All services are running!"

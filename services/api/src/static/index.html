@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ASL Translator</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="stylesheet" href="/static/css/feedback.css">
 </head>
@@ -30,11 +31,9 @@
                     <button id="toggleLiveBtn" class="btn btn-success" disabled>Start Live Detection</button>
                 </div>
 
-                <div class="model-selector">
-                    <label for="model">Model Version:</label>
-                    <select id="model">
-                        <option value="">Loading...</option>
-                    </select>
+                <div class="model-info">
+                    <label>Active Model:</label>
+                    <span id="activeModel" class="model-display">Loading...</span>
                 </div>
             </div>
 
@@ -72,12 +71,12 @@
                         <div id="feedbackSummary" class="feedback-summary"></div>
                         
                         <p class="privacy-notice">
-                            <small>📊 We only store hand landmark coordinates (not your photos) to improve accuracy.</small>
+                            <small>We only store hand landmark coordinates (not your photos) to improve accuracy.</small>
                         </p>
                         <p class="feedback-message">Would you like to contribute this data to improve our model?</p>
                         <div class="feedback-buttons">
-                            <button id="feedbackYes" class="btn btn-success">✓ Yes, use my data</button>
-                            <button id="feedbackNo" class="btn btn-secondary">✗ No thanks</button>
+                            <button id="feedbackYes" class="btn btn-success">Yes, use my data</button>
+                            <button id="feedbackNo" class="btn btn-secondary">No thanks</button>
                         </div>
                     </div>
                 </div>

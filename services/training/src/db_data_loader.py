@@ -9,21 +9,32 @@ from typing import Tuple, List
 
 # Add database path - use mounted API source
 sys.path.insert(0, '/app/api_src')
+sys.path.insert(0, '/app/inference_src')  # For feature extractor
 
 from database import init_db, get_session, TrainingSample
+from feature_extractor import EnhancedFeatureExtractor
 
 
 class DatabaseDataLoader:
     """Load training data from database"""
     
-    def __init__(self, database_url=None):
+    def __init__(self, database_url=None, use_enhanced_features=True):
         """
         Initialize data loader
         
         Args:
             database_url: Optional database URL (default: uses DATABASE_URL env or default)
+            use_enhanced_features: Use EnhancedFeatureExtractor (79 features) vs raw landmarks (63 features)
         """
         self.engine = init_db(database_url)
+        self.use_enhanced_features = use_enhanced_features
+        
+        if use_enhanced_features:
+            self.feature_extractor = EnhancedFeatureExtractor(include_orientation=True)
+            print(f"Using EnhancedFeatureExtractor ({self.feature_extractor.get_feature_count()} features)")
+        else:
+            self.feature_extractor = None
+            print("Using raw landmarks (63 features)")
     
     def load_dataset(self, source_filter=None, include_feedback=True):
         """
@@ -60,7 +71,14 @@ class DatabaseDataLoader:
             
             for sample in samples:
                 if sample.landmarks and len(sample.landmarks) == 63:
-                    features.append(sample.landmarks)
+                    if self.use_enhanced_features:
+                        # Convert raw landmarks to enhanced features
+                        landmarks_dict = self._convert_landmarks_to_dict(sample.landmarks)
+                        enhanced_features = self.feature_extractor.extract_features(landmarks_dict)
+                        features.append(enhanced_features)
+                    else:
+                        # Use raw landmarks
+                        features.append(sample.landmarks)
                     labels.append(sample.gesture)
             
             features = np.array(features)
@@ -116,3 +134,14 @@ class DatabaseDataLoader:
     def load_original_samples(self):
         """Load only original training samples"""
         return self.load_dataset(source_filter=['original'])
+    
+    def _convert_landmarks_to_dict(self, landmarks_list):
+        """Convert flat landmark list to dict format for feature extraction"""
+        landmarks = []
+        for i in range(0, len(landmarks_list), 3):
+            landmarks.append({
+                'x': landmarks_list[i],
+                'y': landmarks_list[i+1],
+                'z': landmarks_list[i+2]
+            })
+        return {'landmarks': landmarks}
