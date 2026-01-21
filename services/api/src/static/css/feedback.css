@@ -6,6 +6,8 @@
     border-radius: 10px;
     padding: 20px;
     animation: slideIn 0.3s ease-out;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 @keyframes slideIn {

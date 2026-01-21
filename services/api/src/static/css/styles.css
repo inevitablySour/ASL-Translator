@@ -86,6 +86,7 @@ main {
 
 .feedback-prompt {
     grid-area: feedback;
+    width: 100%;
 }
 
 .info-section {
