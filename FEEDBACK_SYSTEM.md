@@ -43,7 +43,7 @@ This system collects user feedback on ASL translations to continuously improve t
 
 4. **Training**
    - `services/training/retrain_worker.py` - Monitors DB and triggers retraining
-   - `train_model_cli.py` - Model training script
+   - `scripts/train_model_cli.py` - Model training script
 
 ### Database Schema
 
@@ -206,7 +206,7 @@ result = manager.export_feedback_for_training()
 print(f"Exported {result['count']} samples to {result['export_dir']}")
 
 # Train manually
-# python train_model_cli.py --model-name manual_retrain_20260118 --data-dir data/gestures
+# python scripts/train_model_cli.py --model-name manual_retrain_20260118 --data-dir data/gestures
 
 # Mark as used
 manager.mark_feedback_as_used()

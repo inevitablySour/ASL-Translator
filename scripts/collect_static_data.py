@@ -11,10 +11,11 @@ import json
 import os
 from datetime import datetime
 
-# Add paths
-sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(Path(__file__).parent / "services" / "inference" / "src"))
-sys.path.insert(0, str(Path(__file__).parent / "services" / "api" / "src"))
+# Add project paths (scripts/ is one level below project root)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "services" / "inference" / "src"))
+sys.path.insert(0, str(PROJECT_ROOT / "services" / "api" / "src"))
 
 try:
     from hand_detector import HandDetector
@@ -464,9 +465,9 @@ class StaticGestureCollector:
         
         print("\nNext steps:")
         print("  1. Preprocess the data (if using images):")
-        print("     python preprocess_dataset.py --input-dir <images> --output-dir data/gestures")
+        print("     python scripts/preprocess_dataset.py --input-dir <images> --output-dir data/gestures")
         print("\n  2. Train a model:")
-        print("     python train_model_cli.py --model-name my_model --data-dir data/gestures")
+        print("     python scripts/train_model_cli.py --model-name my_model --data-dir data/gestures")
         print()
 
 

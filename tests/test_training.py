@@ -27,6 +27,7 @@ def test_model_trainer_can_train_on_small_dataset():
     # Prepare data
     scaler = StandardScaler()
     label_encoder = LabelEncoder()
+
     
     y_encoded = label_encoder.fit_transform(y)
     X_train, X_test, y_train, y_test = train_test_split(

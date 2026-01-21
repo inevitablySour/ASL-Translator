@@ -51,10 +51,10 @@ else
 fi
 
 # Check if sync is needed
-if $PYTHON_CMD check_and_sync.py; then
+if $PYTHON_CMD scripts/check_and_sync.py; then
     echo ""
     echo "Syncing SQLite to PostgreSQL..."
-    if $PYTHON_CMD migrate_to_postgres.py; then
+    if $PYTHON_CMD scripts/migrate_to_postgres.py; then
         echo "Sync completed successfully"
     else
         echo "Sync failed, but containers are running"

@@ -24,7 +24,7 @@ This script:
 
 ### Manual sync:
 ```bash
-python3 migrate_to_postgres.py
+python3 scripts/migrate_to_postgres.py
 ```
 
 ## Exporting from PostgreSQL to SQLite
@@ -43,7 +43,7 @@ This script:
 
 ### Manual export:
 ```bash
-python3 export_to_sqlite.py
+python3 scripts/export_to_sqlite.py
 ```
 
 ## Workflow

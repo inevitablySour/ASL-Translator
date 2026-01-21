@@ -25,7 +25,7 @@ if docker ps | grep -q "asl_postgres"; then
         PYTHON_CMD="python3"
     fi
     
-    if $PYTHON_CMD export_to_sqlite.py; then
+    if $PYTHON_CMD scripts/export_to_sqlite.py; then
         echo "Data exported successfully"
     else
         echo "Export failed, but continuing with shutdown..."

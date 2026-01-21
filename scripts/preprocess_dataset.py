@@ -6,8 +6,9 @@ import argparse
 import sys
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add project src to path (scripts/ is one level below project root)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.preprocess_images import ImagePreprocessor
 
@@ -62,7 +63,7 @@ def main():
     print("=" * 60)
     print(f"\nNext steps:")
     print(f"1. Train a model using the processed data:")
-    print(f"   python train_model_cli.py --model-name my_model --data-dir {args.output_dir}")
+    print(f"   python scripts/train_model_cli.py --model-name my_model --data-dir {args.output_dir}")
     print(f"\n2. Start the server and select your model from the dropdown")
 
 

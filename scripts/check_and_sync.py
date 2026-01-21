@@ -5,8 +5,9 @@ Check if SQLite has newer data than PostgreSQL and sync if needed
 import sys
 from pathlib import Path
 
-# Add API source to path
-sys.path.insert(0, str(Path(__file__).parent / 'services' / 'api' / 'src'))
+# Add API source to path (scripts/ is one level below project root)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT / 'services' / 'api' / 'src'))
 
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker

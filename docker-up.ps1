@@ -62,12 +62,12 @@ if ($env:VIRTUAL_ENV) {
 
 # Check if sync is needed
 Write-Host "Running check_and_sync.py..." -ForegroundColor Cyan
-& $PYTHON_CMD check_and_sync.py
+& $PYTHON_CMD scripts/check_and_sync.py
 if ($LASTEXITCODE -eq 0) {
     # 0 = sync needed
     Write-Host ""
     Write-Host "Syncing SQLite to PostgreSQL..." -ForegroundColor Yellow
-    & $PYTHON_CMD migrate_to_postgres.py
+    & $PYTHON_CMD scripts/migrate_to_postgres.py
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Sync completed successfully" -ForegroundColor Green
     } else {

@@ -164,7 +164,7 @@ On first run, the system automatically:
 
 3. **Collect training data**
    ```bash
-   python collect_static_data.py
+   python scripts/collect_static_data.py
    ```
    - Press 'N' to select gesture name
    - Press SPACE to capture samples
@@ -172,7 +172,7 @@ On first run, the system automatically:
 
 4. **Train a model**
    ```bash
-   python train_model_cli.py
+   python scripts/train_model_cli.py
    ```
 
 ### Project Structure
@@ -209,9 +209,13 @@ ASL-Translator/
 │   ├── model_trainer.py
 │   ├── db_data_loader.py
 │   └── hand_detector.py
-├── collect_static_data.py   # Data collection script
-├── train_model_cli.py       # Manual training script
-├── migrate_to_postgres.py   # One-time migration script
+├── scripts/              # CLI and maintenance scripts
+│   ├── collect_static_data.py   # Data collection script
+│   ├── train_model_cli.py       # Manual training script
+│   ├── migrate_to_postgres.py   # One-time migration script
+│   ├── export_to_sqlite.py      # PostgreSQL → SQLite export
+│   ├── check_and_sync.py        # Decide if sync is needed
+│   └── preprocess_dataset.py    # Image preprocessing for landmarks
 └── docker-compose.yaml
 ```
 
@@ -255,7 +259,7 @@ The system automatically retrains when:
 
 ```bash
 # Train from database
-python train_model_cli.py
+python scripts/train_model_cli.py
 
 # View training metrics
 mlflow ui --backend-store-uri models/mlruns
@@ -415,7 +419,7 @@ docker-compose restart
 ### Database migration issues
 ```bash
 # Manual migration
-python migrate_to_postgres.py
+python scripts/migrate_to_postgres.py
 
 # Reset PostgreSQL (WARNING: deletes all data)
 docker-compose down -v

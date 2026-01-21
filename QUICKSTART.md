@@ -28,9 +28,9 @@ The pre-push hook syncs to PostgreSQL (if running) before pushing.
 |---------|-------------|
 | `./docker-up.sh` | Start containers + smart sync from SQLite |
 | `./docker-down.sh` | Export to SQLite + stop containers |
-| `python3 migrate_to_postgres.py` | Manual SQLite → PostgreSQL |
-| `python3 export_to_sqlite.py` | Manual PostgreSQL → SQLite |
-| `python3 check_and_sync.py` | Check if sync needed |
+| `python3 scripts/migrate_to_postgres.py` | Manual SQLite → PostgreSQL |
+| `python3 scripts/export_to_sqlite.py` | Manual PostgreSQL → SQLite |
+| `python3 scripts/check_and_sync.py` | Check if sync needed |
 
 ## What Gets Synced?
 

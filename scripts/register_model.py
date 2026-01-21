@@ -11,8 +11,9 @@ if Path('/src/src').exists():
     # Running in Docker container
     api_src_path = Path('/src/src')
 else:
-    # Running locally
-    api_src_path = Path(__file__).parent / 'services' / 'api' / 'src'
+    # Running locally from scripts/ directory one level below project root
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+    api_src_path = PROJECT_ROOT / 'services' / 'api' / 'src'
 sys.path.insert(0, str(api_src_path))
 
 from database import get_session, init_db, Model

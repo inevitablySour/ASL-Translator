@@ -33,7 +33,7 @@ if ($postgresRunning) {
     }
     
     Write-Host "Running export_to_sqlite.py..." -ForegroundColor Cyan
-    & $PYTHON_CMD export_to_sqlite.py
+    & $PYTHON_CMD scripts/export_to_sqlite.py
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Data exported successfully" -ForegroundColor Green
     } else {
