@@ -3,16 +3,18 @@ services:
     image: postgres:15-alpine
     container_name: asl_postgres
     restart: always
+    env_file:
+      - .env.production
     environment:
-      POSTGRES_USER: asl_user
-      POSTGRES_PASSWORD: asl_password
-      POSTGRES_DB: asl_translator
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U asl_user -d asl_translator"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 2s
       timeout: 5s
       retries: 10
@@ -25,13 +27,24 @@ services:
     volumes:
       - ./data:/app/data
       - ./models:/app/models:ro
+    env_file:
+      - .env.production
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: "5672"
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       MODEL_QUEUE: inference_queue
       API_QUEUE: api_queue
       DATA_QUEUE: data_queue
-      DATABASE_URL: postgresql://asl_user:asl_password@postgres:5432/asl_translator
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      API_KEYS: ${API_KEYS}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8000}
+      RATE_LIMIT_PREDICT: ${RATE_LIMIT_PREDICT:-30/minute}
+      RATE_LIMIT_FEEDBACK: ${RATE_LIMIT_FEEDBACK:-60/minute}
+      RATE_LIMIT_STATS: ${RATE_LIMIT_STATS:-10/minute}
+      RATE_LIMIT_ADMIN: ${RATE_LIMIT_ADMIN:-10/minute}
     depends_on:
       - rabbitmq
       - postgres
@@ -42,12 +55,16 @@ services:
       - ./models:/app/models:ro
       - ./services/api/src:/app/api_src:ro
       - ./data:/app/data:ro
+    env_file:
+      - .env.production
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: "5672"
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       MODEL_QUEUE: inference_queue
       API_QUEUE: api_queue
-      DATABASE_URL: postgresql://asl_user:asl_password@postgres:5432/asl_translator
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
     depends_on:
       - postgres
       - rabbitmq
@@ -58,10 +75,14 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./services/api/src:/app/api_src:ro
+    env_file:
+      - .env.production
     environment:
       RABBITMQ_HOST: rabbitmq
       PYTHONUNBUFFERED: "1"
-      DATABASE_URL: postgresql://asl_user:asl_password@postgres:5432/asl_translator
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
     depends_on:
       - rabbitmq
       - postgres

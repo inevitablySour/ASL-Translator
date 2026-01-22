@@ -36,6 +36,9 @@ ENV/
 # Environment variables
 .env
 .env.local
+.env.production
+.env.*.local
+.env.*.production
 
 # MLflow - tracking complete training history in git
 # mlruns/ - now tracked for experiment persistence
