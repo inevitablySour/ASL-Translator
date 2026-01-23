@@ -240,7 +240,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Get rate limit configuration from environment
-RATE_LIMIT_PREDICT = os.getenv("RATE_LIMIT_PREDICT", "30/minute")
+RATE_LIMIT_PREDICT = os.getenv("RATE_LIMIT_PREDICT", "90/minute")
 RATE_LIMIT_FEEDBACK = os.getenv("RATE_LIMIT_FEEDBACK", "60/minute")
 RATE_LIMIT_STATS = os.getenv("RATE_LIMIT_STATS", "10/minute")
 RATE_LIMIT_ADMIN = os.getenv("RATE_LIMIT_ADMIN", "10/minute")
