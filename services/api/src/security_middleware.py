@@ -20,15 +20,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(self)"
         
         # Content Security Policy (adjust based on your needs)
         csp = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "img-src 'self' data:; "
-            "font-src 'self'; "
+            "font-src 'self' https://fonts.gstatic.com; "
             "connect-src 'self';"
         )
         response.headers["Content-Security-Policy"] = csp
