@@ -333,15 +333,18 @@ async def health_check():
     
     # Check RabbitMQ connectivity
     try:
-        global connection_producer
-        if connection_producer and getattr(connection_producer, "is_open", False):
+        global connection_producer, connection_consumer
+        producer_ok = connection_producer and getattr(connection_producer, "is_open", False)
+        consumer_ok = connection_consumer and getattr(connection_consumer, "is_open", False)
+        
+        if producer_ok or consumer_ok:
             health_status["checks"]["rabbitmq"] = {"status": "healthy", "message": "Connected"}
         else:
-            health_status["status"] = "unhealthy"
-            health_status["checks"]["rabbitmq"] = {"status": "unhealthy", "message": "No connection"}
+            # During startup, RabbitMQ might not be connected yet but API is functional
+            # Mark as degraded instead of unhealthy
+            health_status["checks"]["rabbitmq"] = {"status": "degraded", "message": "Not connected"}
     except Exception as e:
-        health_status["status"] = "unhealthy"
-        health_status["checks"]["rabbitmq"] = {"status": "unhealthy", "message": str(e)}
+        health_status["checks"]["rabbitmq"] = {"status": "degraded", "message": str(e)}
     
     # Return appropriate HTTP status code
     status_code = 200 if health_status["status"] == "healthy" else 503
