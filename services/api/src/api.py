@@ -655,6 +655,7 @@ async def get_services_health():
     """
     Get health status of all services for dashboard monitoring
     """
+    global connection_producer
     import subprocess
     import urllib.request
     
@@ -669,7 +670,6 @@ async def get_services_health():
         session.execute(text("SELECT 1"))
         session.close()
         
-        global connection_producer
         rabbitmq_ok = connection_producer and getattr(connection_producer, "is_open", False)
         
         services["api"] = {
@@ -699,7 +699,6 @@ async def get_services_health():
     
     # Check rabbitmq via connection check
     try:
-        global connection_producer
         if connection_producer and getattr(connection_producer, "is_open", False):
             services["rabbitmq"] = {"status": "healthy", "message": "Connected"}
         else:
