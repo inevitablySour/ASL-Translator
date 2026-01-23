@@ -72,10 +72,10 @@ jobs:
             # Re-create .env.production after pull in case it was overwritten
             printf '%s\n' "$ENV_PRODUCTION" > .env.production
             # Stop and remove containers
-            docker compose down
+            docker compose --env-file .env.production down
             # Pull latest images
-            docker compose pull || true
+            docker compose --env-file .env.production pull || true
             # Rebuild and start services
-            docker compose up -d --build
+            docker compose --env-file .env.production up -d --build
         env:
           ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
