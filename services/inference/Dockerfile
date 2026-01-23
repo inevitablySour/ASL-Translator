@@ -12,4 +12,5 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY . /src
 
-CMD ["python", "-u", "src/inference.py"]
+WORKDIR /src/src
+CMD ["python", "-u", "inference.py"]
