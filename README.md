@@ -51,11 +51,16 @@ Real-time American Sign Language (ASL) recognition system with continuous learni
    - Automatically retrains model when 200 samples collected
    - Uses MLflow for experiment tracking
 
-4. **PostgreSQL Database**
+4. **Streamlit UI** (`services/streamlit/`)
+   - Interactive web interface built with Streamlit
+   - Provides live camera feed and displays predictions
+   - Communicates with the FastAPI service via REST (API_URL)
+
+5. **PostgreSQL Database**
    - Stores predictions, feedback, training samples, and model metadata
    - Persistent storage via Docker volume
 
-5. **RabbitMQ Message Broker**
+6. **RabbitMQ Message Broker**
    - Asynchronous communication between API and inference services
    - Ensures scalability and reliability
 
@@ -105,6 +110,7 @@ Real-time American Sign Language (ASL) recognition system with continuous learni
    - Web UI: http://localhost:8000
    - Dashboard: http://localhost:8000/dashboard
    - RabbitMQ Management: http://localhost:15672 (guest/guest)
+   - Streamlit UI : http://localhost:8501 
 
 4. **Check service status**
    
@@ -196,9 +202,13 @@ ASL-Translator/
 │   │   │   ├── hand_detector.py
 │   │   │   └── gesture_classifier.py
 │   │   └── Dockerfile
-│   └── training/         # Model training service
-│       ├── retrain_worker.py
-│       └── Dockerfile
+│   ├── training/         # Model training service
+│   │    ├── retrain_worker.py
+│   │    └── Dockerfile
+│   └── streamlit/        # Streamlit UI service
+│           ├── app.py
+│           ├── requirements.txt
+│           └── Dockerfile
 ├── data/
 │   ├── feedback.db       # SQLite backup (tracked in git)
 │   └── gestures/         # Training data (images + JSON)
