@@ -66,8 +66,10 @@ jobs:
           script: |
             set -e
             cd /opt/asl-translator/ASL-Translator
+            # Create .env.production from secrets BEFORE git pull to avoid any issues
+            echo "$ENV_PRODUCTION" > .env.production
             git pull
-            # Create .env.production from secrets
+            # Re-create .env.production after pull in case it was overwritten
             echo "$ENV_PRODUCTION" > .env.production
             # Stop and remove containers
             docker compose down
