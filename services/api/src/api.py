@@ -663,9 +663,10 @@ async def get_services_health():
     # Check API service (self)
     try:
         from database import get_session, init_db
+        from sqlalchemy import text
         engine = init_db()
         session = get_session(engine)
-        session.execute("SELECT 1")
+        session.execute(text("SELECT 1"))
         session.close()
         
         global connection_producer
