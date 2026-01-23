@@ -1,4 +1,16 @@
 services:
+  streamlit_ui:
+    build:
+      context: ./services/streamlit
+    container_name: asl_streamlit_ui
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      API_URL: http://api:8000
+    depends_on:
+      - api
+
   postgres:
     image: postgres:15-alpine
     container_name: asl_postgres
