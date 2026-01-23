@@ -404,6 +404,54 @@ feedback_confidence_threshold = 0.9  # Min confidence to collect feedback
 - If bash scripts don't work, use the PowerShell equivalents (`.ps1` files)
 - For WSL issues, enable Docker integration: Docker Desktop → Settings → Resources → WSL Integration
 
+## CI / CT / CD Pipeline
+
+The project includes an end-to-end CI/CT/CD pipeline based on **GitHub Actions** and a Docker VM.
+
+### Continuous Integration (CI)
+
+- Defined in `.github/workflows/ci.yml`.
+- Triggers on:
+  - `push` to `master`.
+  - `pull_request` targeting `master`.
+- `build-and-test` job runs on `ubuntu-latest` and:
+  - Checks out the repo (`actions/checkout@v4`).
+  - Sets up Python 3.11 (`actions/setup-python@v5`).
+  - Installs dependencies from `requirements.txt`.
+  - Runs `python -m compileall .` to catch syntax/import issues.
+  - If `tests/` exists, installs `pytest`, sets `PYTHONPATH` to the project root and runs `pytest tests/ -v`.
+  - Validates Docker config with `docker compose -f docker-compose.yaml config`.
+  - Builds all Docker services with `docker compose -f docker-compose.yaml build`.
+
+### Continuous Testing (CT)
+
+- Tests live under the `tests/` directory and are executed automatically by the CI workflow.
+- Current coverage focuses on:
+  - Core training logic and data loading in `src/` and `services/training/src/`.
+  - Inference behavior in `services/inference/src/`.
+  - API behavior in `services/api/src/` via FastAPI test client.
+- Any new tests added under `tests/` will run on every push/PR to `master`.
+
+### Continuous Deployment (CD)
+
+- Implemented as a second job `deploy` in `.github/workflows/ci.yml`.
+- `deploy`:
+  - Has `needs: build-and-test`, so it only runs if CI/CT succeeded.
+  - Runs only for the `master` branch (`if: github.ref == 'refs/heads/master'`).
+  - Uses `appleboy/ssh-action@v1.1.0` to SSH into the Docker VM using GitHub Secrets:
+    - `VM_HOST`, `VM_USER`, `VM_SSH_KEY`, `VM_SSH_PORT`.
+  - On the VM it executes:
+    - `cd /opt/asl-translator/ASL-Translator` (repository location).
+    - `git pull` to fetch the latest code.
+    - `docker compose down` to stop existing containers.
+    - `docker compose pull || true` to pull any updated images (optional but harmless).
+    - `docker compose up -d --build` to rebuild and restart `api`, `inference`, `training`, `postgres`, and `rabbitmq`.
+- The VM itself is responsible for production concerns such as:
+  - Running Docker Compose.
+  - Terminating HTTPS and proxying to the API via Nginx (required for browser camera access).
+
+For more background on the design decisions behind this pipeline, see `.github/cictcd.md`.
+
 ## Troubleshooting
 
 ### Services won't start

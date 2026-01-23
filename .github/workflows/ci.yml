@@ -39,6 +39,25 @@ jobs:
             echo "No tests directory found, skipping pytest."
           fi
 
+      - name: Create .env.production for CI
+        run: |
+          cat > .env.production << EOF
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          RABBITMQ_PORT=${{ secrets.RABBITMQ_PORT }}
+          API_KEYS=${{ secrets.API_KEYS }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          ENVIRONMENT=${{ secrets.ENVIRONMENT }}
+          DEBUG=${{ secrets.DEBUG }}
+          LOG_LEVEL=${{ secrets.LOG_LEVEL }}
+          ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
+          RATE_LIMIT_PREDICT=${{ secrets.RATE_LIMIT_PREDICT }}
+          RATE_LIMIT_FEEDBACK=${{ secrets.RATE_LIMIT_FEEDBACK }}
+          RATE_LIMIT_STATS=${{ secrets.RATE_LIMIT_STATS }}
+          RATE_LIMIT_ADMIN=${{ secrets.RATE_LIMIT_ADMIN }}
+          EOF
+
       - name: Build Docker services
         run: |
           docker compose -f docker-compose.yaml config
@@ -62,6 +81,23 @@ jobs:
             set -e
             cd /opt/asl-translator/ASL-Translator
             git pull
+            # Create .env.production from secrets
+            cat > .env.production << EOF
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            RABBITMQ_PORT=${{ secrets.RABBITMQ_PORT }}
+            API_KEYS=${{ secrets.API_KEYS }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            ENVIRONMENT=${{ secrets.ENVIRONMENT }}
+            DEBUG=${{ secrets.DEBUG }}
+            LOG_LEVEL=${{ secrets.LOG_LEVEL }}
+            ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
+            RATE_LIMIT_PREDICT=${{ secrets.RATE_LIMIT_PREDICT }}
+            RATE_LIMIT_FEEDBACK=${{ secrets.RATE_LIMIT_FEEDBACK }}
+            RATE_LIMIT_STATS=${{ secrets.RATE_LIMIT_STATS }}
+            RATE_LIMIT_ADMIN=${{ secrets.RATE_LIMIT_ADMIN }}
+            EOF
             # Stop and remove containers
             docker compose down
             # Pull latest images
