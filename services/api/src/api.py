@@ -322,12 +322,14 @@ async def health_check():
     # Check database connectivity
     try:
         from database import get_session, init_db
+        from sqlalchemy import text
         engine = init_db()
         session = get_session(engine)
-        session.execute("SELECT 1")
+        session.execute(text("SELECT 1"))
         session.close()
         health_status["checks"]["database"] = {"status": "healthy", "message": "Connected"}
     except Exception as e:
+        logger.error(f"Database health check failed: {e}")
         health_status["status"] = "unhealthy"
         health_status["checks"]["database"] = {"status": "unhealthy", "message": str(e)}
     
