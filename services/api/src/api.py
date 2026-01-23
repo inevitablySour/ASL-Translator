@@ -347,7 +347,10 @@ async def health_check():
         health_status["checks"]["rabbitmq"] = {"status": "degraded", "message": str(e)}
     
     # Return appropriate HTTP status code
-    status_code = 200 if health_status["status"] == "healthy" else 503
+    # Return 200 if database is healthy (critical dependency)
+    # RabbitMQ being down is degraded but not a failure
+    db_healthy = health_status["checks"].get("database", {}).get("status") == "healthy"
+    status_code = 200 if db_healthy else 503
     
     from fastapi import Response
     return Response(
