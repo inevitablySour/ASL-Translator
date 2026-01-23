@@ -45,12 +45,22 @@ services:
       RATE_LIMIT_FEEDBACK: ${RATE_LIMIT_FEEDBACK:-60/minute}
       RATE_LIMIT_STATS: ${RATE_LIMIT_STATS:-10/minute}
       RATE_LIMIT_ADMIN: ${RATE_LIMIT_ADMIN:-10/minute}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - rabbitmq
-      - postgres
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
   inference:
     build: 
       context: ./services/inference
+    ports:
+      - "8081:8080"
     volumes:
       - ./models:/app/models:ro
       - ./services/api/src:/app/api_src:ro
@@ -65,9 +75,17 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DEBUG: ${DEBUG:-false}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - postgres
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
   training:
     build:
       context: ./services/training
@@ -83,10 +101,19 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DEBUG: ${DEBUG:-false}
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f retrain_worker.py || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - rabbitmq
-      - postgres
-      - api
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_healthy
   rabbitmq: 
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -94,6 +121,12 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   postgres_data:

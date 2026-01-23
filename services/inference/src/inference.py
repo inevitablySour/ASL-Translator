@@ -5,10 +5,14 @@ import os
 import inference_worker as inference_worker
 from logging_config import setup_logging
 import logging
+import health_server
 
 # Set up logging
 setup_logging()
 logger = logging.getLogger(__name__)
+
+# Start health check server
+health_server.start_health_server(port=8080)
 
 inference_queue = os.getenv("MODEL_QUEUE", "Letterbox")
 api_queue = os.getenv("API_QUEUE", "Letterbox")
@@ -87,4 +91,6 @@ def consume_message_inference(connection):
 
 
 connection_consumer = connect_with_broker()
+# Mark service as ready for health checks
+health_server.set_service_ready()
 consume_message_inference(connection_consumer)

@@ -18,6 +18,48 @@
     </nav>
     
     <div class="dashboard-container">
+        <!-- Service Health Status -->
+        <div class="card full-width health-status-card">
+            <h2>Service Health</h2>
+            <div class="health-grid" id="healthGrid">
+                <div class="health-item">
+                    <div class="health-icon">●</div>
+                    <div class="health-info">
+                        <div class="health-name">API</div>
+                        <div class="health-status" id="health-api">Checking...</div>
+                    </div>
+                </div>
+                <div class="health-item">
+                    <div class="health-icon">●</div>
+                    <div class="health-info">
+                        <div class="health-name">Inference</div>
+                        <div class="health-status" id="health-inference">Checking...</div>
+                    </div>
+                </div>
+                <div class="health-item">
+                    <div class="health-icon">●</div>
+                    <div class="health-info">
+                        <div class="health-name">Training</div>
+                        <div class="health-status" id="health-training">Checking...</div>
+                    </div>
+                </div>
+                <div class="health-item">
+                    <div class="health-icon">●</div>
+                    <div class="health-info">
+                        <div class="health-name">PostgreSQL</div>
+                        <div class="health-status" id="health-postgres">Checking...</div>
+                    </div>
+                </div>
+                <div class="health-item">
+                    <div class="health-icon">●</div>
+                    <div class="health-info">
+                        <div class="health-name">RabbitMQ</div>
+                        <div class="health-status" id="health-rabbitmq">Checking...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Key Metrics Row -->
         <div class="metrics-row">
             <div class="metric-card">
@@ -137,7 +179,7 @@
     
     <footer class="dashboard-footer">
         <p>Last updated: <span id="lastUpdated">-</span></p>
-        <p>Auto-refreshes every 30 seconds</p>
+        <p>Auto-refreshes every 30 seconds • Health checks every 10 seconds</p>
     </footer>
     
     <script src="/static/js/dashboard.js"></script>

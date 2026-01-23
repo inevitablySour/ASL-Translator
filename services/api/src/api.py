@@ -306,6 +306,54 @@ async def check_request_size(request: Request, call_next):
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Setting up the home page
+@app.get("/health")
+@app.get("/api/health")
+async def health_check():
+    """
+    Health check endpoint for Docker and monitoring
+    Checks database and RabbitMQ connectivity
+    """
+    health_status = {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "checks": {}
+    }
+    
+    # Check database connectivity
+    try:
+        from database import get_session, init_db
+        engine = init_db()
+        session = get_session(engine)
+        session.execute("SELECT 1")
+        session.close()
+        health_status["checks"]["database"] = {"status": "healthy", "message": "Connected"}
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["checks"]["database"] = {"status": "unhealthy", "message": str(e)}
+    
+    # Check RabbitMQ connectivity
+    try:
+        global connection_producer
+        if connection_producer and getattr(connection_producer, "is_open", False):
+            health_status["checks"]["rabbitmq"] = {"status": "healthy", "message": "Connected"}
+        else:
+            health_status["status"] = "unhealthy"
+            health_status["checks"]["rabbitmq"] = {"status": "unhealthy", "message": "No connection"}
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["checks"]["rabbitmq"] = {"status": "unhealthy", "message": str(e)}
+    
+    # Return appropriate HTTP status code
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    
+    from fastapi import Response
+    return Response(
+        content=json.dumps(health_status),
+        status_code=status_code,
+        media_type="application/json"
+    )
+
+
 @app.get("/")
 def home():
     return FileResponse(BASE_DIR / "static" / "index.html")
@@ -592,6 +640,105 @@ async def get_training_history():
     except Exception as e:
         logger.error(f"Error getting training history: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/services/health")
+async def get_services_health():
+    """
+    Get health status of all services for dashboard monitoring
+    """
+    import subprocess
+    import urllib.request
+    
+    services = {}
+    
+    # Check API service (self)
+    try:
+        from database import get_session, init_db
+        engine = init_db()
+        session = get_session(engine)
+        session.execute("SELECT 1")
+        session.close()
+        
+        global connection_producer
+        rabbitmq_ok = connection_producer and getattr(connection_producer, "is_open", False)
+        
+        services["api"] = {
+            "status": "healthy" if rabbitmq_ok else "degraded",
+            "message": "Running" if rabbitmq_ok else "RabbitMQ connection issue"
+        }
+    except Exception as e:
+        services["api"] = {"status": "unhealthy", "message": str(e)}
+    
+    # Check inference service via HTTP
+    try:
+        req = urllib.request.Request("http://inference:8080/health", method="GET")
+        with urllib.request.urlopen(req, timeout=2) as response:
+            if response.status == 200:
+                services["inference"] = {"status": "healthy", "message": "Running"}
+            else:
+                services["inference"] = {"status": "unhealthy", "message": f"HTTP {response.status}"}
+    except Exception as e:
+        services["inference"] = {"status": "unhealthy", "message": "Not reachable"}
+    
+    # Check postgres via docker inspect
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "--format", "{{.State.Health.Status}}", "asl_postgres"],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0:
+            health = result.stdout.strip()
+            services["postgres"] = {
+                "status": "healthy" if health == "healthy" else "unhealthy",
+                "message": health.capitalize()
+            }
+        else:
+            services["postgres"] = {"status": "unknown", "message": "Cannot inspect"}
+    except Exception as e:
+        services["postgres"] = {"status": "unknown", "message": "Check failed"}
+    
+    # Check rabbitmq via docker inspect
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "--format", "{{.State.Health.Status}}", "rabbitmq"],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0:
+            health = result.stdout.strip()
+            services["rabbitmq"] = {
+                "status": "healthy" if health == "healthy" else "unhealthy",
+                "message": health.capitalize()
+            }
+        else:
+            services["rabbitmq"] = {"status": "unknown", "message": "Cannot inspect"}
+    except Exception as e:
+        services["rabbitmq"] = {"status": "unknown", "message": "Check failed"}
+    
+    # Check training service via docker inspect (no healthcheck endpoint, check if running)
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=asl-translator.*training", "--format", "{{.Status}}"],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            status_text = result.stdout.strip()
+            if "Up" in status_text:
+                services["training"] = {"status": "healthy", "message": "Running"}
+            else:
+                services["training"] = {"status": "unhealthy", "message": status_text}
+        else:
+            services["training"] = {"status": "unhealthy", "message": "Not running"}
+    except Exception as e:
+        services["training"] = {"status": "unknown", "message": "Check failed"}
+    
+    return {"services": services, "timestamp": time.time()}
 
 
 @app.post("/api/models/{model_id}/activate")

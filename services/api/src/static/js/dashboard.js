@@ -6,6 +6,7 @@ let confidenceChart = null;
 async function loadDashboard() {
     try {
         await Promise.all([
+            loadServicesHealth(),
             loadProductionStats(),
             loadModels(),
             loadTrainingHistory(),
@@ -16,6 +17,40 @@ async function loadDashboard() {
     } catch (error) {
         console.error('Error loading dashboard:', error);
         showError('Failed to load dashboard data. Please refresh.');
+    }
+}
+
+// Load services health status
+async function loadServicesHealth() {
+    try {
+        const response = await fetch('/api/services/health');
+        const data = await response.json();
+        
+        // Update each service status
+        const services = data.services;
+        for (const [serviceName, serviceData] of Object.entries(services)) {
+            const statusElement = document.getElementById(`health-${serviceName}`);
+            const healthItem = statusElement.closest('.health-item');
+            const icon = healthItem.querySelector('.health-icon');
+            
+            if (statusElement) {
+                statusElement.textContent = serviceData.message || serviceData.status;
+                
+                // Remove old status classes
+                healthItem.classList.remove('status-healthy', 'status-unhealthy', 'status-degraded', 'status-unknown');
+                
+                // Add new status class
+                healthItem.classList.add(`status-${serviceData.status}`);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading services health:', error);
+        // Mark all as unknown if fetch fails
+        const healthStatuses = document.querySelectorAll('.health-status');
+        healthStatuses.forEach(el => {
+            el.textContent = 'Check failed';
+            el.closest('.health-item').classList.add('status-unknown');
+        });
     }
 }
 
@@ -345,6 +380,9 @@ document.getElementById('refreshBtn').addEventListener('click', () => {
 
 // Auto-refresh every 30 seconds
 setInterval(loadDashboard, 30000);
+
+// Check health status more frequently (every 10 seconds)
+setInterval(loadServicesHealth, 10000);
 
 // Initial load
 loadDashboard();

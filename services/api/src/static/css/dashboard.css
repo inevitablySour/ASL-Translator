@@ -204,6 +204,87 @@ td.loading {
     color: #f39c12;
 }
 
+/* Health Status */
+.health-status-card {
+    margin-bottom: 0.5rem;
+}
+
+.health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.health-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #95a5a6;
+    transition: all 0.3s ease;
+}
+
+.health-icon {
+    font-size: 1.5rem;
+    color: #95a5a6;
+    transition: color 0.3s ease;
+}
+
+.health-info {
+    flex: 1;
+}
+
+.health-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+}
+
+.health-status {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+}
+
+/* Health status states */
+.health-item.status-healthy {
+    border-left-color: #27ae60;
+    background: #d4edda;
+}
+
+.health-item.status-healthy .health-icon {
+    color: #27ae60;
+}
+
+.health-item.status-unhealthy {
+    border-left-color: #e74c3c;
+    background: #f8d7da;
+}
+
+.health-item.status-unhealthy .health-icon {
+    color: #e74c3c;
+}
+
+.health-item.status-degraded {
+    border-left-color: #f39c12;
+    background: #fff3cd;
+}
+
+.health-item.status-degraded .health-icon {
+    color: #f39c12;
+}
+
+.health-item.status-unknown {
+    border-left-color: #95a5a6;
+    background: #ecf0f1;
+}
+
+.health-item.status-unknown .health-icon {
+    color: #95a5a6;
+}
+
 /* Feedback Stats */
 .feedback-stats {
     display: flex;
