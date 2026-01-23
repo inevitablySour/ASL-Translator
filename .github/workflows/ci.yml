@@ -62,15 +62,18 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           port: ${{ secrets.VM_SSH_PORT }}
+          envs: ENV_PRODUCTION
           script: |
             set -e
             cd /opt/asl-translator/ASL-Translator
             git pull
             # Create .env.production from secrets
-            echo "${{ secrets.ENV_PRODUCTION }}" > .env.production
+            echo "$ENV_PRODUCTION" > .env.production
             # Stop and remove containers
             docker compose down
             # Pull latest images
             docker compose pull || true
             # Rebuild and start services
             docker compose up -d --build
+        env:
+          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
