@@ -1,0 +1,108 @@
+ASL Translator – Quick Run Guide (Simple)
+
+What this system does
+This project is a containerized AIOps system that recognizes ASL hand signs from webcam images.
+A user shows a hand sign to the camera, the system predicts the gesture, and the user can give feedback.
+The feedback is stored and later used to retrain a new model automatically.
+
+How it works (simple flow)
+
+The UI captures a webcam frame
+
+The frame is sent to the API (POST /predict)
+
+The API sends the job to RabbitMQ
+
+The inference service runs the ML model and returns a prediction
+
+The API stores the prediction in PostgreSQL and returns the result to the UI
+
+If the user gives feedback (correct / incorrect):
+
+The feedback is saved in the database
+
+It becomes training data
+
+Once enough feedback is collected, the training service retrains a new model automatically
+
+How to run it locally (Docker)
+
+
+Step 1 – Create env file
+Copy the example environment file:
+
+
+Windows (PowerShell):
+copy .env.example .env
+
+
+macOS / Linux:
+cp .env.example .env
+
+
+You usually do not need to change anything inside .env.
+
+Step 2 – Start the system
+
+
+
+Run this in the project root:
+
+docker compose up -d
+
+This will build images and start all services:
+
+
+API
+
+Inference
+
+Training
+
+PostgreSQL
+
+RabbitMQ
+
+Streamlit UI
+
+Step 3 – Open the apps in your browser
+
+Built-in translator UI:
+http://localhost:8000
+
+Builtin dashboard:
+http://localhost:8000/dashboard
+
+O Streamlit UI:
+http://localhost:8501
+
+Allow camera permissions in your browser.
+
+Step 4 – Use the system
+
+Open http://localhost:8000
+
+Show a hand sign to the camera
+
+Wait for a prediction
+
+Click “Correct” or “Incorrect” to submit feedback
+
+Open http://localhost:8000/dashboard
+ to see live stats
+
+Step 5 – Stop the system
+
+When you are done:
+
+docker compose down
+
+Notes
+
+The camera runs in your browser, not inside Docker
+
+“No hand detected” is normal if lighting or framing is bad
+
+Some frames do not include landmarks, so feedback may not always be saved for training
+
+The Streamlit UI is optional and uses the same backend as the built-in UI
