@@ -51,7 +51,7 @@ jobs:
   deploy:
     name: Deploy to Docker VM
     needs: build-and-test
-    runs-on: [self-hosted, asl-vm]
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/master'
 
     steps:
