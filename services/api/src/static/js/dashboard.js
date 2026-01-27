@@ -224,7 +224,8 @@ async function loadModels() {
                 const activateBtn = document.createElement('button');
                 activateBtn.textContent = 'Activate';
                 activateBtn.className = 'activate-btn';
-                activateBtn.onclick = () => activateModel(model.id, model.version);
+                // Pass the click event so we can update button state safely
+                activateBtn.onclick = (event) => activateModel(event, model.id, model.version);
                 actionsCell.appendChild(activateBtn);
             } else {
                 actionsCell.textContent = '-';
@@ -328,29 +329,52 @@ async function loadFeedbackStats() {
 }
 
 // Activate a model
-async function activateModel(modelId, modelVersion) {
+async function activateModel(event, modelId, modelVersion) {
     if (!confirm(`Are you sure you want to activate model "${modelVersion}"?\n\nThis will restart the inference service to load the new model.`)) {
         return;
     }
     
     try {
-        // Show loading message
+        // Get or prompt for admin API key used by the dashboard
+        let apiKey = localStorage.getItem('asl_dashboard_api_key');
+        if (!apiKey) {
+            apiKey = prompt('Enter admin API key (X-API-Key) to activate models:');
+            if (!apiKey) {
+                alert('Activation cancelled: no API key provided.');
+                return;
+            }
+            localStorage.setItem('asl_dashboard_api_key', apiKey);
+        }
+
+        // Show loading message on the clicked button
         const btn = event.target;
         const originalText = btn.textContent;
         btn.textContent = 'Activating...';
         btn.disabled = true;
         
         const response = await fetch(`/api/models/${modelId}/activate`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'X-API-Key': apiKey
+            }
         });
         
-        const result = await response.json();
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (e) {
+            // If response is not JSON, keep result as empty object
+        }
         
         if (response.ok) {
             alert(`Model "${modelVersion}" activated successfully!\n\nThe inference service has been restarted and is now using the new model.`);
             // Reload models table
             await loadModels();
         } else {
+            // If API key is invalid/expired, clear it so user is prompted next time
+            if (response.status === 403 && result.detail && result.detail.toLowerCase().includes('api key')) {
+                localStorage.removeItem('asl_dashboard_api_key');
+            }
             alert(`Failed to activate model: ${result.detail || 'Unknown error'}`);
             btn.textContent = originalText;
             btn.disabled = false;
